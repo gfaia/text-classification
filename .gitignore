@@ -56,3 +56,10 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# training related
+*/logs
+*/models
+data/rt-polaritydata/*
+data/word2vec/*
+*/.ipynb_checkpoints
