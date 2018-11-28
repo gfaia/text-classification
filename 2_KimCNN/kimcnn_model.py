@@ -5,7 +5,7 @@ import tensorflow as tf
 class KimCNN(object):
   """The cnn model of text classification."""
   def __init__(self, num_classes, seq_len, embedding_size, filter_sizes, num_filters, weight_decay,
-               init_lr, decay_steps, decay_rate, vocab_size, is_rand=True, is_finetuned=False,
+               init_lr, decay_steps, decay_rate, vocab_size, is_rand=False, is_finetuned=False,
                embeddings=None):
     
     # parameters init

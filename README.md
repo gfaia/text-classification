@@ -32,16 +32,41 @@ Before deep learning, we first to compare some of the traditional learning algor
 
 ### 2. KimCNN
 
-KimCNN is the basic CNN model used to the task of text classification. In the paper, Kim (2014) proposes four different model variations, in this survey, we only investigate the top two proposals *CNN-rand* and *CNN-static*. For CNN-static, [*Word2vec*](https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit?usp=sharing) is used as the pre-trained vectors.
+KimCNN is the basic CNN model used to the task of text classification. In the paper, *Kim (2014)* proposes four different model variations, in this survey, we only investigate the top three proposals *CNN-rand*, *CNN-static* and *CNN-non-static*. For CNN-static, [*Word2vec*](https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit?usp=sharing) is used as the pre-trained vectors.
 
 | Algorithms               | Accuracy  |
 |------------------------- |:--------: |
-| CNN-rand                 | 77.77     |
-| CNN-static               | 82.36     |
+| CNN-rand                 | 77.02     |
+| CNN-static               | 81.14     |
+| CNN-non-static           | 81.50     |
 
-* the best results are seleted here.
+* all results are CV score. In the experiment of CNN-non-static, the `FLAGS.weight_decay` should be small. The paper *Zhang and Wallace (2015)* give a more detail guide to setting hyperparameters.
+
+### 3. FastText
+
+*Joulin et al.* propose a very simple baseline model for text classification. This algorithm just calculates the mean of word embeddings of the document, and seem the mean vector as the feature map of the document. 
+
+| Algorithms | Accuracy |
+|------------|:--------:|
+| FastText   | 79.64    |
+
+### 4. Recurrent CNN
+
+To address the limitation of conventional window-based neural networks, *Lai et al.* proposes a *Recurrent Convolutional Neural Network (RCNN)*, which concatenates Bi-LSTM and directional layers. In 
+
+| Algorithms   | Accuracy |
+|--------------|:--------:|
+| Recurrent CNN| 81.52    |
 
 
 ## References
 
 1. [Convolutional Neural Networks for Sentence Classification, Yoon Kim (2014)](https://www.aclweb.org/anthology/D14-1181)
+
+2. [A Sensitivity Analysis of (and Practitioners’ Guide to) Convolutional
+Neural Networks for Sentence Classification, Zhang and Wallace (2015)](https://arxiv.org/pdf/1510.03820.pdf)
+
+3. [Bag of Tricks for Efficient Text Classification, Joulin et al.](https://arxiv.org/pdf/1607.01759.pdf) 
+
+4. [Recurrent Convolutional Neural Networks for Text Classification, Lai et al.](https://www.aaai.org/ocs/index.php/AAAI/AAAI15/paper/download/9745/9552)
+

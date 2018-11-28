@@ -14,7 +14,7 @@ from tqdm import tqdm
 import time
 import tensorflow as tf
 import helper
-from textcnn_model import KimCNN
+from recurrent_cnn_model import ReccurentCNN
 
 
 def main(unused_argv):
@@ -22,12 +22,12 @@ def main(unused_argv):
   x_train, y_train, x_dev, y_dev, embeddings, vocab_size \
     = helper.mr_data_preprocess(FLAGS.is_rand, FLAGS.seq_len)
 
-  model = KimCNN(num_classes=FLAGS.num_classes, seq_len=FLAGS.seq_len, 
-                 embedding_size=FLAGS.embedding_size, filter_sizes=[3, 4, 5], 
-                 num_filters=FLAGS.num_filters, weight_decay=FLAGS.weight_decay, 
-                 init_lr=FLAGS.learning_rate, embeddings=embeddings, 
-                 decay_steps=FLAGS.decay_steps, decay_rate=FLAGS.decay_rate, 
-                 vocab_size=vocab_size, is_rand=FLAGS.is_rand)
+  model = ReccurentCNN(
+    num_classes=FLAGS.num_classes, embedding_size=FLAGS.embedding_size, 
+    init_lr=FLAGS.learning_rate, weight_decay=FLAGS.weight_decay, 
+    vocab_size=vocab_size, rnn_size=FLAGS.rnn_size, decay_steps=FLAGS.decay_steps, 
+    decay_rate=FLAGS.decay_rate, seq_len=FLAGS.seq_len, is_rand=FLAGS.is_rand,
+    is_finetuned=FLAGS.is_finetuned, embeddings=embeddings)
 
   sess = tf.InteractiveSession()
   tf.summary.scalar('loss', model.loss)
@@ -63,7 +63,7 @@ def main(unused_argv):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument('--epochs', type=int, default=30,
+  parser.add_argument('--epochs', type=int, default=10,
                       help='Number of epochs to run trainer.')
   parser.add_argument('--learning_rate', type=float, default=1e-3,
                       help='Initial learning rate.')
@@ -71,28 +71,28 @@ if __name__ == "__main__":
                       help='the number of classes.')
   parser.add_argument('--embedding_size', type=int, default=300, 
                       help='The size of embedding.')
-  parser.add_argument('--num_filters', type=int, default=100, 
-                      help='The size of filters')
-  parser.add_argument('--batch_size', type=int, default=128, 
+  parser.add_argument('--rnn_size', type=int, default=300, 
+                      help='the size of hidden state of rnn.')
+  parser.add_argument('--batch_size', type=int, default=60, 
                       help='The size of batch.')
   parser.add_argument('--seq_len', type=int, default=60, 
                       help='The length of sequence.')
-  parser.add_argument('--dropout_rate', type=float, default=0.75, 
+  parser.add_argument('--dropout_rate', type=float, default=0.5, 
                       help='The probability rate of dropout')
   parser.add_argument('--weight_decay', type=float, default=2e-6, 
                       help='The rate of weight decay.')
-  parser.add_argument('--decay_steps', type=int, default=4000, 
+  parser.add_argument('--decay_steps', type=int, default=5000, 
                       help='The period of decay.')
   parser.add_argument('--decay_rate', type=float, default=0.65, 
                       help='The rate of decay.')
   parser.add_argument('--is_rand', type=bool, default=False,
-                      help='Whether use random words embeddings or static version.')
+                      help='Whether use random words embeddings.')
   parser.add_argument('--is_finetuned', type=bool, default=False, 
                       help='Whether finetune the pertrained word embeddings.')
-  parser.add_argument('--log_dir', type=str, default="logs/textcnn_mr",
+  parser.add_argument('--log_dir', type=str, 
+                      default='logs/textrcnn_mr',
                       help='Summaries logs directory')
-  parser.add_argument('--model_dir', type=str, 
-                      default="models/textcnn_mr.ckpt",
+  parser.add_argument('--model_dir', type=str, default='models/textrcnn_mr',
                       help='The path to save model.')
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run()

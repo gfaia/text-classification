@@ -13,7 +13,7 @@ import argparse
 import time
 import tensorflow as tf
 import helper
-from textcnn_model import KimCNN
+from kimcnn_model import KimCNN
 
 
 def main(unused_argv):
@@ -26,7 +26,7 @@ def main(unused_argv):
                  num_filters=FLAGS.num_filters, weight_decay=FLAGS.weight_decay, 
                  init_lr=FLAGS.learning_rate, embeddings=embeddings, 
                  decay_steps=FLAGS.decay_steps, decay_rate=FLAGS.decay_rate, 
-                 vocab_size=vocab_size, is_rand=FLAGS.is_rand)
+                 vocab_size=vocab_size, is_rand=FLAGS.is_rand, is_finetuned=FLAGS.is_finetuned)
 
   sess = tf.InteractiveSession()
   tf.summary.scalar('loss', model.loss)
@@ -73,15 +73,15 @@ if __name__ == "__main__":
                       help='The size of embedding.')
   parser.add_argument('--num_filters', type=int, default=100, 
                       help='The size of filters')
-  parser.add_argument('--batch_size', type=int, default=128, 
+  parser.add_argument('--batch_size', type=int, default=60, 
                       help='The size of batch.')
   parser.add_argument('--seq_len', type=int, default=60, 
                       help='The length of sequence.')
-  parser.add_argument('--dropout_rate', type=float, default=0.75, 
+  parser.add_argument('--dropout_rate', type=float, default=0.5, 
                       help='The probability rate of dropout')
   parser.add_argument('--weight_decay', type=float, default=2e-6, 
                       help='The rate of weight decay.')
-  parser.add_argument('--decay_steps', type=int, default=4000, 
+  parser.add_argument('--decay_steps', type=int, default=5000, 
                       help='The period of decay.')
   parser.add_argument('--decay_rate', type=float, default=0.65, 
                       help='The rate of decay.')

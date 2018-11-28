@@ -108,7 +108,7 @@ def next_batch(data, labels, batch_size=128):
   for i in range(n_batches):
     data_batch = data[i * batch_size: (i + 1) *  batch_size]
     label_batch = labels[i * batch_size: (i + 1) *  batch_size]
-
+    
     yield data_batch, label_batch
 
 
@@ -168,7 +168,7 @@ def mr_data_preprocess(is_rand, seq_len, embedding_size=300):
     # this version come from
     # https://github.com/yoonkim/CNN_sentence/blob/master/process_data.py
 
-    vocab = tp.word_index    
+    vocab = tp.word_index
 
     embeddings = np.zeros(shape=(vocab_size, embedding_size), dtype='float32')
     vectors = gensim.models.KeyedVectors.load_word2vec_format(mr_vectors)
@@ -287,4 +287,4 @@ class TextPreprocessing(object):
 
 
 if __name__ == "__main__":
-  raise
+  pass
