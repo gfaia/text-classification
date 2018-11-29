@@ -52,21 +52,25 @@ KimCNN is the basic CNN model used to the task of text classification. In the pa
 
 ### 4. Recurrent CNN
 
-To address the limitation of conventional window-based neural networks, *Lai et al.* proposes a *Recurrent Convolutional Neural Network (RCNN)*, which concatenates Bi-LSTM and directional layers. In 
+To address the limitation of conventional window-based neural networks, *Lai et al.* proposes a *Recurrent Convolutional Neural Network (RCNN)*, which concatenates Bi-LSTM and directional layers. Here, we compare some of the variants of RNN, and the model with the attention mechanism () performs the best among all of the approaches. 
 
-| Algorithms   | Accuracy |
-|--------------|:--------:|
-| Recurrent CNN| 81.52    |
+| Algorithms           | Accuracy |
+|--------------        |:--------:|
+| Recurrent NN         | 79.64    |
+| Recurrent CNN        | 81.52    |
+| Recurrent NN + Atten | 81.99    |
 
 
 ## References
 
-1. [Convolutional Neural Networks for Sentence Classification, Yoon Kim (2014)](https://www.aclweb.org/anthology/D14-1181)
+1. Convolutional Neural Networks for Sentence Classification, [Yoon Kim (2014)](https://www.aclweb.org/anthology/D14-1181)
 
-2. [A Sensitivity Analysis of (and Practitioners’ Guide to) Convolutional
-Neural Networks for Sentence Classification, Zhang and Wallace (2015)](https://arxiv.org/pdf/1510.03820.pdf)
+2. A Sensitivity Analysis of (and Practitioners’ Guide to) Convolutional
+Neural Networks for Sentence Classification, [Zhang and Wallace (2015)](https://arxiv.org/pdf/1510.03820.pdf)
 
-3. [Bag of Tricks for Efficient Text Classification, Joulin et al.](https://arxiv.org/pdf/1607.01759.pdf) 
+3. Bag of Tricks for Efficient Text Classification, [Joulin et al.](https://arxiv.org/pdf/1607.01759.pdf) 
 
-4. [Recurrent Convolutional Neural Networks for Text Classification, Lai et al.](https://www.aaai.org/ocs/index.php/AAAI/AAAI15/paper/download/9745/9552)
+4. Recurrent Convolutional Neural Networks for Text Classification, [Lai et al.](https://www.aaai.org/ocs/index.php/AAAI/AAAI15/paper/download/9745/9552)
 
+5. Attention-Based Bidirectional Long Short-Term Memory Networks for
+Relation Classification, [Zhou et al.](http://www.aclweb.org/anthology/P16-2034)

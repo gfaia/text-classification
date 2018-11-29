@@ -80,9 +80,8 @@ class ReccurentCNN(object):
     with tf.name_scope("loss"):
       losses = tf.nn.softmax_cross_entropy_with_logits(labels=self.labels, logits=self.logits)
       # exculde the bias parameters
-      self.loss = tf.add(tf.reduce_mean(losses), 
-        self.weight_decay * tf.add_n(
-          [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
+      self.loss = tf.add(tf.reduce_mean(losses), self.weight_decay * tf.add_n(
+        [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
 
     with tf.name_scope("accuracy"):
       correct_predictions = tf.equal(self.predictions, tf.argmax(self.labels, 1))
