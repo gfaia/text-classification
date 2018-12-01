@@ -15,7 +15,7 @@ import time
 import tensorflow as tf
 import numpy as np
 import helper
-from fasttext_model_wp import FastText
+from fasttext_model import FastText
 
 
 def lengths_matrix(x, embedding_size):

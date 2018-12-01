@@ -1,4 +1,4 @@
-"""FastText - average words embedding as the feature."""
+"""FastText without <pad> - average words embedding as the feature."""
 import tensorflow as tf
 
 
@@ -28,12 +28,15 @@ class FastText(object):
     
     self.inputs = tf.placeholder(tf.int32, [None, self.seq_len], name='inputs')
     self.labels = tf.placeholder(tf.float32, [None, self.num_classes], name='labels')
+    # the length of each sentence.
+    self.lengths = tf.placeholder(tf.float32, [None, self.embedding_size], name='lengths')
 
     with tf.device("/gpu:0"):
       W = tf.Variable(tf.truncated_normal([self.vocab_size, self.embedding_size], 
-                                          stddev=0.1), name="W")
+                                          stddev=0.1), name="W")      
     embedded_chars = tf.nn.embedding_lookup(W, self.inputs)
-    feature = tf.reduce_mean(embedded_chars, axis=1)
+    embedded_sum = tf.reduce_sum(embedded_chars, axis=1)
+    feature = embedded_sum / self.lengths
 
     with tf.name_scope("inference"):
       W = tf.Variable(tf.truncated_normal([self.embedding_size, self.num_classes], 

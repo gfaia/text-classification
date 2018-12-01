@@ -63,3 +63,5 @@ target/
 data/rt-polaritydata/*
 data/word2vec/*
 */.ipynb_checkpoints
+
+*.pdf

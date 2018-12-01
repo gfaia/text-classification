@@ -26,7 +26,7 @@ data_dir = join(os.path.dirname(__file__), "data")
 mr_data_dir = join(data_dir, "rt-polaritydata")
 mr_pos_data = join(mr_data_dir, "rt-polarity.pos")
 mr_neg_data = join(mr_data_dir, "rt-polarity.neg")
-mr_vectors = join(mr_data_dir, "vectors.txt")
+mr_word2vec = join(mr_data_dir, "word2vec.txt")
 
 
 def clean_str(string):
@@ -285,6 +285,13 @@ class TextPreprocessing(object):
 
     return seqids
 
+  def get_vocab(self):
+    """Get the vocabulary of dataset."""
+    if len(self.word_index) == 0:
+      raise Exception("Have not preprocess the dataset.")
+    else:
+      return set(self.word_index.keys())
 
-if __name__ == "__main__":
-  pass
+
+# if __name__ == "__main__":
+  # word2vec = gensim.models.KeyedVectors.load_word2vec_format(mr_word2vec, binary=True)
