@@ -62,6 +62,7 @@ target/
 */models
 data/rt-polaritydata/*
 data/word2vec/*
+data/ag_news_csv/*
 */.ipynb_checkpoints
 
 *.pdf

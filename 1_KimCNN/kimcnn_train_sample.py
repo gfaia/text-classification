@@ -71,7 +71,7 @@ if __name__ == "__main__":
                       help='the number of classes.')
   parser.add_argument('--embedding_size', type=int, default=300, 
                       help='The size of embedding.')
-  parser.add_argument('--num_filters', type=int, default=100, 
+  parser.add_argument('--num_filters', type=int, default=128, 
                       help='The size of filters')
   parser.add_argument('--batch_size', type=int, default=60, 
                       help='The size of batch.')

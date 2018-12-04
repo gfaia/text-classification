@@ -91,9 +91,9 @@ if __name__ == "__main__":
   parser.add_argument('--is_finetuned', type=bool, default=False, 
                       help='Whether finetune the pertrained word embeddings.')
   parser.add_argument('--log_dir', type=str, 
-                      default='logs/textrcnn_mr',
+                      default='logs/textrnn_mr',
                       help='Summaries logs directory')
-  parser.add_argument('--model_dir', type=str, default='models/textrcnn_mr',
+  parser.add_argument('--model_dir', type=str, default='models/textrnn_mr',
                       help='The path to save model.')
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run()

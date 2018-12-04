@@ -8,25 +8,30 @@ from __future__ import print_function
 
 import os
 import re
+import csv
 import numpy as np
-import pandas as pd
-from tensorflow.contrib import learn
 import tensorflow as tf
 import gensim
 from os.path import join
 
 
+# Constants
 PAD_INDEX = 0
 UNK_INDEX = 1
 FILTERS = '!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n'
 
 data_dir = join(os.path.dirname(__file__), "data")
 
-# the settings of data dir
+# Movie Review
 mr_data_dir = join(data_dir, "rt-polaritydata")
 mr_pos_data = join(mr_data_dir, "rt-polarity.pos")
 mr_neg_data = join(mr_data_dir, "rt-polarity.neg")
 mr_word2vec = join(mr_data_dir, "word2vec.txt")
+
+# AG’s news corpus
+ag_data_dir = join(data_dir, "ag_news_csv")
+ag_train = join(ag_data_dir, "train.csv")
+ag_test = join(ag_data_dir, "test.csv")
 
 
 def clean_str(string):
@@ -47,7 +52,7 @@ def clean_str(string):
   string = re.sub(r"\)", " \) ", string)
   string = re.sub(r"\?", " \? ", string)
   string = re.sub(r"\s{2,}", " ", string)
-  return string.strip().lower()
+  return string.strip()
 
 
 def detect_dir_is_existed(dir):
@@ -61,7 +66,6 @@ def detect_dir_is_existed(dir):
 def split_train_dev(x, y, split_rate=0.1):
   """Split the original data into train and dev part."""
   n_samples = len(y)
-  # np.random.seed(40)
   shuffle_indices = np.random.permutation(n_samples)
   x, y = x[shuffle_indices], y[shuffle_indices]
   dev_index = int(n_samples * split_rate)
@@ -139,39 +143,50 @@ def filter_vectors_from_word2vec(dataset_vocab, dataset_vectors):
       f.write(w + ' ' + ' '.join(map(str, word2vec[w])) + '\n')
 
 
+def mr_data_loader():
+  """Load the data of movie reviews."""
+  pos_examples = [s.decode("utf-8", "ignore").strip() 
+                  for s in list(open(mr_pos_data, mode="rb").readlines())]
+  neg_examples = [s.decode("utf-8", "ignore").strip() 
+                  for s in list(open(mr_neg_data, mode="rb").readlines())]
+
+  pos_nums, neg_nums = len(pos_examples), len(neg_examples)
+  texts = pos_examples + neg_examples
+  texts = [clean_str(text) for text in texts]
+
+  pos_labels = [[0, 1] for _ in range(pos_nums)]
+  neg_labels = [[1, 0] for _ in range(neg_nums)]
+  labels = pos_labels + neg_labels
+
+  return texts, np.array(labels)
+
+
 def mr_data_preprocess(is_rand, seq_len, embedding_size=300):
   """Data preprocessing of movie review.
+  
   Args:
     is_rand: decide whether use word embeddings.
     seq_len: the final length of text sequence.
     embedding_size: the size of word embeddings, default set as 300.
   """
-  pos_examples = [s.decode("utf-8", "ignore").strip() 
-                  for s in list(open(mr_pos_data, mode="rb").readlines())]
-  neg_examples = [s.decode("utf-8", "ignore").strip() 
-                  for s in list(open(mr_neg_data, mode="rb").readlines())]
-  pos_nums, neg_nums = len(pos_examples), len(neg_examples)
-  texts = pos_examples + neg_examples
-  x = [clean_str(text) for text in texts]
-  pos_y = [[0, 1] for _ in range(pos_nums)]
-  neg_y = [[1, 0] for _ in range(neg_nums)]
-  y = pos_y + neg_y
+  texts, labels = mr_data_loader()
 
   tp = TextPreprocessing(seq_len=seq_len)
-  x = tp.convert_texts_to_seqs(x)
+  tp.fit_on_texts(texts)
+  x = tp.texts_to_sequences(texts)
   vocab_size = tp.vocab_size
   embeddings = None
 
   if not is_rand:
     # create a static word embeddings
-    # the index 0 reversed to <PAD> and 1 reversed to <UNK>
+    # NOTE: The special token <PAD> set as index 0 and <UNK> set as 1 by convention.
     # this version come from
     # https://github.com/yoonkim/CNN_sentence/blob/master/process_data.py
 
     vocab = tp.word_index
 
     embeddings = np.zeros(shape=(vocab_size, embedding_size), dtype='float32')
-    vectors = gensim.models.KeyedVectors.load_word2vec_format(mr_vectors)
+    vectors = gensim.models.KeyedVectors.load_word2vec_format(mr_word2vec)
 
     for w in vocab.keys():
       if w in vectors.vocab:
@@ -180,15 +195,59 @@ def mr_data_preprocess(is_rand, seq_len, embedding_size=300):
         if w != '<PAD>':
           embeddings[vocab[w]] = np.random.uniform(-0.25, 0.25, embedding_size)
 
-  x_train, y_train, x_dev, y_dev = split_train_dev(np.array(x), np.array(y))
+  x_train, y_train, x_dev, y_dev = split_train_dev(x, labels)
   return x_train, y_train, x_dev, y_dev, np.array(embeddings), vocab_size
 
 
-class TextPreprocessing(object):
-  """This class used to text preprocessing."""
+def _ag_data_loader(filename):
+  """Load the data AG's news corpus."""
+  texts, labels = [], []
+  with open(filename, 'r', encoding='utf-8') as f:
+    rdr = csv.reader(f, delimiter=',', quotechar='"')
+    for row in rdr:
+      labels.append(int(row[0]))
+      text = clean_str(" ".join(row[1:]))
+      texts.append(text)
+  return texts, np.array(labels)
 
-  def __init__(self, min_df=1, max_df=None, lower=True, split=' ', filters=FILTERS, 
-               char_level=False, oov=True, n_samples=0, seq_len=None, **kwargs):
+
+def ag_data_preprocess_char(seq_len):
+  """Data preprocessing of AG’s news corpus.
+  
+  Args:
+    seq_len: the final length of text sequence.
+  """
+  train_texts, train_labels = _ag_data_loader(ag_train)
+  test_texts, test_labels = _ag_data_loader(ag_test)
+  all_texts = train_texts + test_texts
+
+  tp = TextPreprocessing(seq_len=seq_len, char_level=True, oov_token=False)
+  tp.fit_on_texts(all_texts)
+  train_texts = tp.texts_to_sequences(train_texts)  
+  test_texts = tp.texts_to_sequences(test_texts)
+  vocab_size = len(tp.word_index)
+
+  return train_texts, train_labels - 1, test_texts, test_labels - 1, vocab_size
+
+
+class TextPreprocessing(object):
+  """This class used to text preprocessing. 
+    A light-preprocessor for text.
+  
+  Args:
+    min_df: the minimum frequency which the count of token should bigger than.
+      default set as 1, i.e. the total token appeared in corpus.
+    max_df: the maximum frequency which the count of token should smaller than. 
+    lower: whether to convert the texts to lowercase, boolen type.
+    split: separator for word splitting, str type.
+    char_level: whether treat each char as token. boolen type.
+    filters: a string where each element is a character that will be filtered from the texts.
+    oov_token: whether set the out of vocabulary.
+    seq_len: the final length of text sequence.
+  """
+
+  def __init__(self, min_df=1, max_df=None, lower=True, split=' ', char_level=False, 
+               filters=FILTERS, oov_token=True, seq_len=None, **kwargs):
     
     if kwargs:
       raise TypeError('Unrecognized keyword arguments: ' + str(kwargs))
@@ -197,21 +256,17 @@ class TextPreprocessing(object):
     self.max_df = max_df
     self.lower = lower
     self.split = split
-    self.filters = filters
     self.char_level = char_level
-    self.n_samples = n_samples
+    self.filters = filters
+    self.oov_token = oov_token
     self.seq_len = seq_len
 
     self.word_index = dict()
     self.index_word = dict()
     self.word_counts = dict()
-
-    # We limit the some Special Words. <PAD> 0, <UNK> 1
-    self.word_index['<PAD>'] = PAD_INDEX
-    self.word_index['<UNK>'] = UNK_INDEX
     self.vocab_size = 0
 
-  def _convert_text_to_word_seq(self, text):
+  def _text_to_word_sequence(self, text):
     """Convert a string to the word sequence.
     
     Args:
@@ -223,40 +278,21 @@ class TextPreprocessing(object):
     for c in self.filters:
       text = text.replace(c, self.split)
 
-    # text = re.sub(r"\s{2,}", " ", text)
     seq = text.split(self.split)
 
     return [i for i in seq if i]
 
-  def _pad_seq(self, seq):
-    """Modify the length of sequence as self.seq_len.
+  def fit_on_texts(self, texts):
+    """Updates internal vocabulary based on a list of texts.
     
     Args:
-      seq: a list of word index, list type.
+      texts: a list of string, list type
     """
-    padded_seq = []
-    if len(seq) > self.seq_len:
-      padded_seq = seq[:self.seq_len]
-    else:
-      padded_seq = seq + [PAD_INDEX for i in range(self.seq_len - len(seq))]
-
-    return padded_seq
-
-  def convert_texts_to_seqs(self, texts):
-    """Updates the parameters of text dataset.
-
-    Not change the order of datasets.
-    
-    Args:
-      texts: a list of string, list type.
-    """
-    seqs = []
     for text in texts:
-      if isinstance(text, str):
-        seq = self._convert_text_to_word_seq(text)
-        seqs.append(seq)
+      if self.char_level:
+        seq = text.lower()
       else:
-        raise("The type of text must be str.")
+        seq = self._text_to_word_sequence(text)
 
       for w in seq:
         if w in self.word_counts:
@@ -272,18 +308,13 @@ class TextPreprocessing(object):
       if self.min_df <= c <= self.max_df:
         self.word_index[w] = len(self.word_index)
 
+    # NOTE: The special token <PAD> set as index 0 and <UNK> set as 1 by convention.
+    self.word_index['<PAD>'] = PAD_INDEX
+    if self.oov_token:
+      self.word_index['<UNK>'] = UNK_INDEX
+
     self.index_word = dict(zip(self.word_index.values(), self.word_index.keys()))
     self.vocab_size = len(self.index_word)
-
-    seqids = [[self.word_index[w] if w in self.word_index.keys() else UNK_INDEX for w in seq] 
-              for seq in seqs]
-
-    if not self.seq_len:
-      self.seq_len = max([len(s) for s in seqids])
-
-    seqids = [self._pad_seq(seqid) for seqid in seqids]
-
-    return seqids
 
   def get_vocab(self):
     """Get the vocabulary of dataset."""
@@ -292,6 +323,50 @@ class TextPreprocessing(object):
     else:
       return set(self.word_index.keys())
 
+  def _pad_seq(self, seq):
+    """Modify the length of sequence as self.seq_len.
+    
+    Args:
+      seq: a list of word index, list type.
+    """
+    padded_seq = []
+    if len(seq) > self.seq_len:
+      padded_seq = seq[:self.seq_len]
+    else:
+      padded_seq = seq + [PAD_INDEX for i in range(self.seq_len - len(seq))]
 
-# if __name__ == "__main__":
-  # word2vec = gensim.models.KeyedVectors.load_word2vec_format(mr_word2vec, binary=True)
+    return padded_seq
+
+  def texts_to_sequences(self, texts):
+    """Convert texts to sequences.
+    
+    Args:
+      texts: a list of string, list type.
+    """
+    return np.array(list(self.texts_to_sequences_genator(texts)))
+
+  def texts_to_sequences_genator(self, texts):
+    """Updates the parameters of text dataset.
+
+    Not change the order of datasets.
+    
+    Args:
+      texts: a list of string, list type.
+    """
+    for text in texts:
+      if self.char_level:
+        seq = text.lower()
+      else:
+        seq = self._text_to_word_sequence(text)
+
+      vect = []
+      for w in seq:
+        if w in self.word_index.keys():
+          vect.append(self.word_index[w])
+        else:
+          if self.oov_token:
+            vect.append(UNK_INDEX)
+
+      vect = self._pad_seq(vect)
+
+      yield vect
