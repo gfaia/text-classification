@@ -4,8 +4,9 @@ import tensorflow as tf
 
 class FastText(object):
   """FastText: Facebook's simple model for text classification."""
-  def __init__(self, num_classes, seq_len, embedding_size, weight_decay, init_lr, decay_steps,
-               decay_rate, vocab_size):
+  def __init__(self, 
+               num_classes, seq_len, embedding_size, vocab_size,
+               weight_decay, init_lr, decay_steps, decay_rate):
 
     self.num_classes = num_classes
     self.seq_len = seq_len

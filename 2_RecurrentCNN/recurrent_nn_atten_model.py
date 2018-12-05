@@ -4,8 +4,9 @@ from tensorflow.contrib import rnn
 
 class RecurrentNNAtten(object):
   """Use the attention on the rnn model."""
-  def __init__(self, num_classes, embedding_size, weight_decay, vocab_size, 
-               rnn_size, num_layers, init_lr, decay_steps, decay_rate, seq_len, 
+  def __init__(self, 
+               num_classes, embedding_size, vocab_size, rnn_size, seq_len,
+               weight_decay, init_lr, decay_steps, decay_rate, 
                is_rand=True, is_finetuned=True, embeddings=None):
 
     self.num_classes = num_classes
@@ -16,7 +17,6 @@ class RecurrentNNAtten(object):
     self.is_rand = is_rand
     self.embeddings = embeddings
     self.rnn_size = rnn_size
-    self.num_layers = num_layers
     self.dropout_rate = tf.placeholder(tf.float32, name="dropout_rate")
 
     # weight decay

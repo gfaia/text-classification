@@ -15,11 +15,6 @@ import gensim
 from os.path import join
 
 
-# Constants
-PAD_INDEX = 0
-UNK_INDEX = 1
-FILTERS = '!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n'
-
 data_dir = join(os.path.dirname(__file__), "data")
 
 # Movie Review
@@ -32,6 +27,7 @@ mr_word2vec = join(mr_data_dir, "word2vec.txt")
 ag_data_dir = join(data_dir, "ag_news_csv")
 ag_train = join(ag_data_dir, "train.csv")
 ag_test = join(ag_data_dir, "test.csv")
+ag_word2vec = join(ag_data_dir, "word2vec.txt")
 
 
 def clean_str(string):
@@ -143,7 +139,7 @@ def filter_vectors_from_word2vec(dataset_vocab, dataset_vectors):
       f.write(w + ' ' + ' '.join(map(str, word2vec[w])) + '\n')
 
 
-def mr_data_loader():
+def _mr_data_loader():
   """Load the data of movie reviews."""
   pos_examples = [s.decode("utf-8", "ignore").strip() 
                   for s in list(open(mr_pos_data, mode="rb").readlines())]
@@ -161,7 +157,7 @@ def mr_data_loader():
   return texts, np.array(labels)
 
 
-def mr_data_preprocess(is_rand, seq_len, embedding_size=300):
+def mr_data_loader(is_rand, seq_len, embedding_size=300):
   """Data preprocessing of movie review.
   
   Args:
@@ -169,11 +165,12 @@ def mr_data_preprocess(is_rand, seq_len, embedding_size=300):
     seq_len: the final length of text sequence.
     embedding_size: the size of word embeddings, default set as 300.
   """
-  texts, labels = mr_data_loader()
+  texts, labels = _mr_data_loader()
 
   tp = TextPreprocessing(seq_len=seq_len)
   tp.fit_on_texts(texts)
   x = tp.texts_to_sequences(texts)
+  x_train, y_train, x_dev, y_dev = split_train_dev(x, labels)
   vocab_size = tp.vocab_size
   embeddings = None
 
@@ -195,8 +192,7 @@ def mr_data_preprocess(is_rand, seq_len, embedding_size=300):
         if w != '<PAD>':
           embeddings[vocab[w]] = np.random.uniform(-0.25, 0.25, embedding_size)
 
-  x_train, y_train, x_dev, y_dev = split_train_dev(x, labels)
-  return x_train, y_train, x_dev, y_dev, np.array(embeddings), vocab_size
+  return x_train, y_train, x_dev, y_dev, embeddings, vocab_size
 
 
 def _ag_data_loader(filename):
@@ -211,7 +207,7 @@ def _ag_data_loader(filename):
   return texts, np.array(labels)
 
 
-def ag_data_preprocess_char(seq_len):
+def ag_data_loader(seq_len, is_rand=False, char_level=False, embedding_size=300):
   """Data preprocessing of AG’s news corpus.
   
   Args:
@@ -220,14 +216,35 @@ def ag_data_preprocess_char(seq_len):
   train_texts, train_labels = _ag_data_loader(ag_train)
   test_texts, test_labels = _ag_data_loader(ag_test)
   all_texts = train_texts + test_texts
+  train_labels = train_labels - 1
+  test_labels = test_labels - 1
 
-  tp = TextPreprocessing(seq_len=seq_len, char_level=True, oov_token=False)
+  tp = TextPreprocessing(seq_len=seq_len, char_level=char_level)
   tp.fit_on_texts(all_texts)
-  train_texts = tp.texts_to_sequences(train_texts)  
+  train_texts = tp.texts_to_sequences(train_texts)
   test_texts = tp.texts_to_sequences(test_texts)
-  vocab_size = len(tp.word_index)
+  vocab_size = tp.vocab_size
+  embeddings = None
 
-  return train_texts, train_labels - 1, test_texts, test_labels - 1, vocab_size
+  if not is_rand:
+    # create a static word embeddings
+    # NOTE: The special token <PAD> set as index 0 and <UNK> set as 1 by convention.
+    # this version come from
+    # https://github.com/yoonkim/CNN_sentence/blob/master/process_data.py
+
+    vocab = tp.word_index
+
+    embeddings = np.zeros(shape=(vocab_size, embedding_size), dtype='float32')
+    vectors = gensim.models.KeyedVectors.load_word2vec_format(ag_word2vec)
+
+    for w in vocab.keys():
+      if w in vectors.vocab:
+        embeddings[vocab[w]] = vectors[w]
+      else:
+        if w != '<PAD>':
+          embeddings[vocab[w]] = np.random.uniform(-0.25, 0.25, embedding_size)
+
+  return train_texts, train_labels, test_texts, test_labels, embeddings, vocab_size
 
 
 class TextPreprocessing(object):
@@ -245,9 +262,10 @@ class TextPreprocessing(object):
     oov_token: whether set the out of vocabulary.
     seq_len: the final length of text sequence.
   """
-
-  def __init__(self, min_df=1, max_df=None, lower=True, split=' ', char_level=False, 
-               filters=FILTERS, oov_token=True, seq_len=None, **kwargs):
+  def __init__(self, 
+               min_df=1, max_df=None, lower=True, split=' ', char_level=False, 
+               filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', 
+               oov_token=True, seq_len=None, **kwargs):
     
     if kwargs:
       raise TypeError('Unrecognized keyword arguments: ' + str(kwargs))
@@ -288,6 +306,7 @@ class TextPreprocessing(object):
     Args:
       texts: a list of string, list type
     """
+    max_seq_len = 0
     for text in texts:
       if self.char_level:
         seq = text.lower()
@@ -300,18 +319,24 @@ class TextPreprocessing(object):
         else:
           self.word_counts[w] = 1
 
+      if len(seq) > max_seq_len:
+        max_seq_len = len(seq)
+
+    if self.seq_len is None:
+      self.seq_len = max_seq_len
+
     if not self.max_df:
       self.max_df = max(self.word_counts.values())
+
+    # NOTE: The special token <PAD> set as index 0 and <UNK> set as 1 by convention.
+    self.word_index['<PAD>'] = 0
+    if self.oov_token:
+      self.word_index['<UNK>'] = 1
 
     wcounts = self.word_counts.items()
     for w, c in wcounts:
       if self.min_df <= c <= self.max_df:
         self.word_index[w] = len(self.word_index)
-
-    # NOTE: The special token <PAD> set as index 0 and <UNK> set as 1 by convention.
-    self.word_index['<PAD>'] = PAD_INDEX
-    if self.oov_token:
-      self.word_index['<UNK>'] = UNK_INDEX
 
     self.index_word = dict(zip(self.word_index.values(), self.word_index.keys()))
     self.vocab_size = len(self.index_word)
@@ -333,7 +358,7 @@ class TextPreprocessing(object):
     if len(seq) > self.seq_len:
       padded_seq = seq[:self.seq_len]
     else:
-      padded_seq = seq + [PAD_INDEX for i in range(self.seq_len - len(seq))]
+      padded_seq = seq + [0 for i in range(self.seq_len - len(seq))]
 
     return padded_seq
 
@@ -365,7 +390,7 @@ class TextPreprocessing(object):
           vect.append(self.word_index[w])
         else:
           if self.oov_token:
-            vect.append(UNK_INDEX)
+            vect.append(1)
 
       vect = self._pad_seq(vect)
 

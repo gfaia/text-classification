@@ -4,9 +4,10 @@ from tensorflow.contrib import rnn
 
 class RecurrentNN(object):
   """the model based on the rnn or lstm"""
-  def __init__(self, num_classes, embedding_size, weight_decay, vocab_size, rnn_size, num_layers, 
-               init_lr, decay_steps, decay_rate, seq_len, is_rand=False, is_finetuned=False,
-               embeddings=None):
+  def __init__(self, 
+               num_classes, embedding_size, vocab_size, rnn_size, num_layers, seq_len,
+               weight_decay, init_lr, decay_steps, decay_rate, 
+               is_rand=False, is_finetuned=False, embeddings=None):
 
     self.num_classes = num_classes
     self.seq_len = seq_len

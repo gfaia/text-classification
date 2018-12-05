@@ -19,12 +19,15 @@ from charcnn_model import CharCNN
 
 
 def main(unused_argv):
-  # dataset 
-  x_train, y_train, x_dev, y_dev, vocab_size = helper.ag_data_preprocess_char(FLAGS.seq_len)
 
-  model = CharCNN(seq_len=FLAGS.seq_len, num_classes=FLAGS.num_classes, alphabet_size=vocab_size,
-                  weight_decay=FLAGS.weight_decay, init_lr=FLAGS.learning_rate, 
-                  decay_steps=FLAGS.decay_steps, decay_rate=FLAGS.decay_rate)
+  x_train, y_train, x_test, y_test, _, vocab_size = \
+    helper.ag_data_loader(FLAGS.seq_len, is_rand=True, char_level=True)
+
+  model = CharCNN(
+    seq_len=FLAGS.seq_len, num_classes=FLAGS.num_classes, alphabet_size=vocab_size,
+    weight_decay=FLAGS.weight_decay, init_lr=FLAGS.learning_rate, 
+    decay_steps=FLAGS.decay_steps, decay_rate=FLAGS.decay_rate
+    )
   
   sess = tf.InteractiveSession()
   tf.summary.scalar('loss', model.loss)
@@ -37,16 +40,17 @@ def main(unused_argv):
   saver = tf.train.Saver()
   tf.global_variables_initializer().run()
 
-  # model train
   for e in range(FLAGS.epochs):
     print("----- Epoch {}/{} -----".format(e + 1, FLAGS.epochs))
+    # training stage
     train_batches = helper.generate_batches(x_train, y_train, FLAGS.batch_size)
     for xt, yt in tqdm(train_batches, desc="Training"):
       _, i = sess.run([model.optimization, model.add_global],
                       feed_dict={ model.inputs: xt, model.labels: yt, 
                                   model.dropout_rate: FLAGS.dropout_rate})
 
-    test_batches = helper.generate_batches(x_dev, y_dev, 128)
+    # testing stage
+    test_batches = helper.generate_batches(x_test, y_test, 128)
     acc_list = []
     for xd, yd in tqdm(test_batches, desc="Testing"):
       summary, acc, loss, lr = sess.run([merged, model.accuracy, model.loss, model.learning_rate], 
@@ -85,10 +89,10 @@ if __name__ == "__main__":
                       help='The period of decay.')
   parser.add_argument('--decay_rate', type=float, default=0.65, 
                       help='The rate of decay.')
-  parser.add_argument('--log_dir', type=str, default="logs/charcnn_ag",
+  parser.add_argument('--log_dir', type=str, default="logs/charcnn",
                       help='Summaries logs directory')
   parser.add_argument('--model_dir', type=str, 
-                      default="models/charcnn_ag.ckpt",
+                      default="models/charcnn.ckpt",
                       help='The path to save model.')
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run()

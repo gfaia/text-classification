@@ -10,24 +10,24 @@ sys.path.append('..')
 
 import os
 import argparse
+import numpy as np
 from tqdm import tqdm
 import time
 import tensorflow as tf
 import helper
-from kimcnn_model import KimCNN
+from dpcnn_model import DPCNN
 
 
 def main(unused_argv):
-  # Movie dataset process.
-  x_train, y_train, x_dev, y_dev, embeddings, vocab_size \
-    = helper.mr_data_preprocess(FLAGS.is_rand, FLAGS.seq_len)
+  x_train, y_train, x_test, y_test, embeddings, vocab_size = helper.ag_data_loader(FLAGS.seq_len)
 
-  model = KimCNN(
-    num_classes=FLAGS.num_classes, seq_len=FLAGS.seq_len, embedding_size=FLAGS.embedding_size,
-    filter_sizes=[3, 4, 5], num_filters=FLAGS.num_filters, weight_decay=FLAGS.weight_decay, 
-    init_lr=FLAGS.learning_rate, embeddings=embeddings, decay_steps=FLAGS.decay_steps, 
-    decay_rate=FLAGS.decay_rate, vocab_size=vocab_size, is_rand=FLAGS.is_rand, 
-    is_finetuned=FLAGS.is_finetuned)
+  model = DPCNN(
+    num_classes=FLAGS.num_classes, seq_len=FLAGS.seq_len, 
+    embedding_size=FLAGS.embedding_size, vocab_size=vocab_size, 
+    weight_decay=FLAGS.weight_decay, init_lr=FLAGS.learning_rate, 
+    decay_steps=FLAGS.decay_steps, decay_rate=FLAGS.decay_rate, 
+    is_rand=FLAGS.is_rand, is_finetuned=FLAGS.is_finetuned, embeddings=embeddings
+    )
 
   sess = tf.InteractiveSession()
   tf.summary.scalar('loss', model.loss)
@@ -40,18 +40,24 @@ def main(unused_argv):
   saver = tf.train.Saver()
   tf.global_variables_initializer().run()
 
-  # model train
   for e in range(FLAGS.epochs):
     print("----- Epoch {}/{} -----".format(e + 1, FLAGS.epochs))
-    for xt, yt in tqdm(helper.generate_batches(x_train, y_train, FLAGS.batch_size), 
-                       desc="Training"):
-      _, i = sess.run([model.optimization, model.add_global], 
+    # training stage
+    train_batches = helper.generate_batches(x_train, y_train, FLAGS.batch_size)
+    for xt, yt in tqdm(train_batches, desc="Training"):
+      _, i = sess.run([model.optimization, model.add_global],
                       feed_dict={ model.inputs: xt, model.labels: yt, 
                                   model.dropout_rate: FLAGS.dropout_rate})
 
-    summary, acc, loss, lr = sess.run([merged, model.accuracy, model.loss, model.learning_rate], 
-                                      feed_dict={ model.inputs: x_dev, model.labels: y_dev, 
-                                                  model.dropout_rate: 1})
+    # testing stage
+    test_batches = helper.generate_batches(x_test, y_test, 128)
+    acc_list = []
+    for xd, yd in tqdm(test_batches, desc="Testing"):
+      summary, acc, loss, lr = sess.run([merged, model.accuracy, model.loss, model.learning_rate], 
+                                        feed_dict={ model.inputs: xd, model.labels: yd, 
+                                                    model.dropout_rate: 1})
+      acc_list.append(acc)
+    acc = np.mean(acc_list)     
 
     current = time.asctime(time.localtime(time.time()))
     print("""{0} Step {1:5} Learning rate: {2:.6f} Losss: {3:.4f} Accuracy: {4:.4f}"""
@@ -67,15 +73,13 @@ if __name__ == "__main__":
                       help='Number of epochs to run trainer.')
   parser.add_argument('--learning_rate', type=float, default=1e-3,
                       help='Initial learning rate.')
-  parser.add_argument('--num_classes', type=int, default=2, 
+  parser.add_argument('--num_classes', type=int, default=4, 
                       help='the number of classes.')
   parser.add_argument('--embedding_size', type=int, default=300, 
                       help='The size of embedding.')
-  parser.add_argument('--num_filters', type=int, default=128, 
-                      help='The size of filters')
-  parser.add_argument('--batch_size', type=int, default=60, 
+  parser.add_argument('--batch_size', type=int, default=128, 
                       help='The size of batch.')
-  parser.add_argument('--seq_len', type=int, default=60, 
+  parser.add_argument('--seq_len', type=int, default=200, 
                       help='The length of sequence.')
   parser.add_argument('--dropout_rate', type=float, default=0.5, 
                       help='The probability rate of dropout')
@@ -89,11 +93,10 @@ if __name__ == "__main__":
                       help='Whether use random words embeddings or static version.')
   parser.add_argument('--is_finetuned', type=bool, default=False, 
                       help='Whether finetune the pertrained word embeddings.')
-  parser.add_argument('--log_dir', type=str, default="logs/textcnn_mr",
+  parser.add_argument('--log_dir', type=str, default="logs/dpcnn",
                       help='Summaries logs directory')
   parser.add_argument('--model_dir', type=str, 
-                      default="models/textcnn_mr.ckpt",
+                      default="models/dpcnn.ckpt",
                       help='The path to save model.')
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run()
-

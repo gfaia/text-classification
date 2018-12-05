@@ -18,8 +18,9 @@ import helper
 
 class CharCNN(object):
 
-  def __init__(self, seq_len, num_classes, alphabet_size, weight_decay, init_lr,
-               decay_steps, decay_rate):
+  def __init__(self, 
+               seq_len, num_classes, alphabet_size, 
+               weight_decay, init_lr, decay_steps, decay_rate):
 
     # convolution layers: feature_map, filter_size, max_pool_size
     # Zhang et al. ZhangCNN model settings.
