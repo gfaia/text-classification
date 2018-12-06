@@ -139,6 +139,24 @@ def filter_vectors_from_word2vec(dataset_vocab, dataset_vectors):
       f.write(w + ' ' + ' '.join(map(str, word2vec[w])) + '\n')
 
 
+def build_embeddings(word_index, embedding_size, word2vec_file):
+  # create a static word embeddings
+  # NOTE: The special token <PAD> set as index 0 and <UNK> set as 1 by convention.
+  # this version come from
+  # https://github.com/yoonkim/CNN_sentence/blob/master/process_data.py
+
+  embeddings = np.zeros(shape=(len(word_index), embedding_size), dtype='float32')
+  vectors = gensim.models.KeyedVectors.load_word2vec_format(word2vec_file)
+
+  for w in word_index.keys():
+    if w in vectors.vocab:
+      embeddings[word_index[w]] = vectors[w]
+    else:
+      if w != '<PAD>':
+        embeddings[word_index[w]] = np.random.uniform(-0.25, 0.25, embedding_size)
+  return embeddings
+
+
 def _mr_data_loader():
   """Load the data of movie reviews."""
   pos_examples = [s.decode("utf-8", "ignore").strip() 
@@ -150,14 +168,14 @@ def _mr_data_loader():
   texts = pos_examples + neg_examples
   texts = [clean_str(text) for text in texts]
 
-  pos_labels = [[0, 1] for _ in range(pos_nums)]
-  neg_labels = [[1, 0] for _ in range(neg_nums)]
+  pos_labels = [1 for _ in range(pos_nums)]
+  neg_labels = [0 for _ in range(neg_nums)]
   labels = pos_labels + neg_labels
 
   return texts, np.array(labels)
 
 
-def mr_data_loader(is_rand, seq_len, embedding_size=300):
+def mr_data_loader(seq_len, is_rand=False, char_level=False, embedding_size=300):
   """Data preprocessing of movie review.
   
   Args:
@@ -166,33 +184,19 @@ def mr_data_loader(is_rand, seq_len, embedding_size=300):
     embedding_size: the size of word embeddings, default set as 300.
   """
   texts, labels = _mr_data_loader()
+  n_labels = 2
 
-  tp = TextPreprocessing(seq_len=seq_len)
+  tp = TextPreprocessing(seq_len=seq_len, char_level=char_level)
   tp.fit_on_texts(texts)
   x = tp.texts_to_sequences(texts)
-  x_train, y_train, x_dev, y_dev = split_train_dev(x, labels)
+  x_train, y_train, x_test, y_test = split_train_dev(x, labels)
   vocab_size = tp.vocab_size
   embeddings = None
 
   if not is_rand:
-    # create a static word embeddings
-    # NOTE: The special token <PAD> set as index 0 and <UNK> set as 1 by convention.
-    # this version come from
-    # https://github.com/yoonkim/CNN_sentence/blob/master/process_data.py
+    embeddings = build_embeddings(tp.word_index, embedding_size, mr_word2vec)
 
-    vocab = tp.word_index
-
-    embeddings = np.zeros(shape=(vocab_size, embedding_size), dtype='float32')
-    vectors = gensim.models.KeyedVectors.load_word2vec_format(mr_word2vec)
-
-    for w in vocab.keys():
-      if w in vectors.vocab:
-        embeddings[vocab[w]] = vectors[w]
-      else:
-        if w != '<PAD>':
-          embeddings[vocab[w]] = np.random.uniform(-0.25, 0.25, embedding_size)
-
-  return x_train, y_train, x_dev, y_dev, embeddings, vocab_size
+  return x_train, y_train, x_test, y_test, embeddings, vocab_size, n_labels
 
 
 def _ag_data_loader(filename):
@@ -216,35 +220,28 @@ def ag_data_loader(seq_len, is_rand=False, char_level=False, embedding_size=300)
   train_texts, train_labels = _ag_data_loader(ag_train)
   test_texts, test_labels = _ag_data_loader(ag_test)
   all_texts = train_texts + test_texts
-  train_labels = train_labels - 1
-  test_labels = test_labels - 1
+  y_train = train_labels - 1
+  y_test = test_labels - 1
+  n_labels = 4
 
   tp = TextPreprocessing(seq_len=seq_len, char_level=char_level)
   tp.fit_on_texts(all_texts)
-  train_texts = tp.texts_to_sequences(train_texts)
-  test_texts = tp.texts_to_sequences(test_texts)
+  x_train = tp.texts_to_sequences(train_texts)
+  x_test = tp.texts_to_sequences(test_texts)
   vocab_size = tp.vocab_size
   embeddings = None
 
   if not is_rand:
-    # create a static word embeddings
-    # NOTE: The special token <PAD> set as index 0 and <UNK> set as 1 by convention.
-    # this version come from
-    # https://github.com/yoonkim/CNN_sentence/blob/master/process_data.py
+    embeddings = build_embeddings(tp.word_index, embedding_size, ag_word2vec)
 
-    vocab = tp.word_index
+  return x_train, y_train, x_test, y_test, embeddings, vocab_size, n_labels
 
-    embeddings = np.zeros(shape=(vocab_size, embedding_size), dtype='float32')
-    vectors = gensim.models.KeyedVectors.load_word2vec_format(ag_word2vec)
 
-    for w in vocab.keys():
-      if w in vectors.vocab:
-        embeddings[vocab[w]] = vectors[w]
-      else:
-        if w != '<PAD>':
-          embeddings[vocab[w]] = np.random.uniform(-0.25, 0.25, embedding_size)
-
-  return train_texts, train_labels, test_texts, test_labels, embeddings, vocab_size
+def data_loader(seq_len, dataset='MR', is_rand=False, char_level=False, embedding_size=300):
+  """Collect all data loader functions."""
+  data_loaders = {'MR': mr_data_loader, 
+                  'AG': ag_data_loader}
+  return data_loaders[dataset](seq_len, is_rand, char_level, embedding_size)
 
 
 class TextPreprocessing(object):

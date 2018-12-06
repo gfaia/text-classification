@@ -35,7 +35,8 @@ class KimCNN(object):
   def model(self):
     # word embeddings -> cnn (filter * k) -> fc -> logits
     self.inputs = tf.placeholder(tf.int32, [None, self.seq_len], name='inputs')
-    self.labels = tf.placeholder(tf.float32, [None, self.num_classes], name='labels')
+    self.labels = tf.placeholder(tf.int32, [None], name='labels')
+    self.onehot_labels = tf.one_hot(self.labels, self.num_classes)
 
     # words embeddings
     with tf.device("/gpu:0"):
@@ -80,8 +81,8 @@ class KimCNN(object):
   def loss_acc(self):
 
     with tf.name_scope("loss"):
-      # losses = tf.nn.softmax_cross_entropy_with_logits(labels=self.labels, logits=self.logits)
-      losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.logits)
+      losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.onehot_labels, 
+                                                       logits=self.logits)
       
       # exculde the biases parameters
       self.loss = tf.add(tf.reduce_mean(losses), 
@@ -89,7 +90,7 @@ class KimCNN(object):
           [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
 
     with tf.name_scope("accuracy"):
-      correct_predictions = tf.equal(self.predictions, tf.argmax(self.labels, 1))
+      correct_predictions = tf.equal(self.predictions, tf.argmax(self.onehot_labels, 1))
       self.accuracy = tf.reduce_mean(tf.cast(correct_predictions, "float"), name='accuracy')
 
   def train_op(self):

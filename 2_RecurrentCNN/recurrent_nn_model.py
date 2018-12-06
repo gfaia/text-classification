@@ -34,10 +34,11 @@ class RecurrentNN(object):
   def model(self):
     # word embeddings -> Bidirectional LSTM  -> mean pooling -> fc -> logits
     self.inputs = tf.placeholder(tf.int32, [None, self.seq_len], name='inputs')
-    self.labels = tf.placeholder(tf.int32, [None, self.num_classes], name='labels')
+    self.labels = tf.placeholder(tf.int32, [None], name='labels')
+    self.onehot_labels = tf.one_hot(self.labels, self.num_classes)
 
     # word embeddings, option: is_or_not random
-    with tf.device('/cpu:0'):
+    with tf.device('/gpu:0'):
       if self.is_rand:
         W = tf.Variable(tf.truncated_normal([self.vocab_size, self.embedding_size], 
                                             stddev=0.1), name="W")
@@ -91,13 +92,14 @@ class RecurrentNN(object):
   def loss_acc(self):
     """the loss and accuracy of model"""
     with tf.name_scope("loss"):
-      losses = tf.nn.softmax_cross_entropy_with_logits(labels=self.labels, logits=self.logits)
+      losses = tf.nn.softmax_cross_entropy_with_logits(labels=self.onehot_labels, 
+                                                       logits=self.logits)
       # exculde the bias parameters
       self.loss = tf.add(tf.reduce_mean(losses), self.weight_decay * tf.add_n(
         [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
 
     with tf.name_scope("accuracy"):
-      correct_predictions = tf.equal(self.predictions, tf.argmax(self.labels, 1))
+      correct_predictions = tf.equal(self.predictions, tf.argmax(self.onehot_labels, 1))
       self.accuracy = tf.reduce_mean(tf.cast(correct_predictions, "float"), name='accuracy')
 
   def train_op(self):

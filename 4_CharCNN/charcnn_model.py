@@ -107,7 +107,6 @@ class CharCNN(object):
   def loss_acc(self):
 
     with tf.name_scope("loss"):
-      # losses = tf.nn.softmax_cross_entropy_with_logits(labels=self.labels, logits=self.logits)
       losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.onehot_labels, 
                                                        logits=self.logits)
       

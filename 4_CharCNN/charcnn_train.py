@@ -20,11 +20,11 @@ from charcnn_model import CharCNN
 
 def main(unused_argv):
 
-  x_train, y_train, x_test, y_test, _, vocab_size = \
-    helper.ag_data_loader(FLAGS.seq_len, is_rand=True, char_level=True)
+  x_train, y_train, x_test, y_test, embeddings, vocab_size, n_labels = \
+    helper.data_loader(dataset=FLAGS.dataset, char_level=True, seq_len=FLAGS.seq_len)
 
   model = CharCNN(
-    seq_len=FLAGS.seq_len, num_classes=FLAGS.num_classes, alphabet_size=vocab_size,
+    seq_len=FLAGS.seq_len, num_classes=n_labels, alphabet_size=vocab_size,
     weight_decay=FLAGS.weight_decay, init_lr=FLAGS.learning_rate, 
     decay_steps=FLAGS.decay_steps, decay_rate=FLAGS.decay_rate
     )
@@ -49,15 +49,16 @@ def main(unused_argv):
                       feed_dict={ model.inputs: xt, model.labels: yt, 
                                   model.dropout_rate: FLAGS.dropout_rate})
 
-    # testing stage
-    test_batches = helper.generate_batches(x_test, y_test, 128)
-    acc_list = []
+    # testing stage.
+    test_batches = helper.generate_batches(x_test, y_test, FLAGS.batch_size)
+    acc_list, loss_list = [], []
     for xd, yd in tqdm(test_batches, desc="Testing"):
       summary, acc, loss, lr = sess.run([merged, model.accuracy, model.loss, model.learning_rate], 
                                         feed_dict={ model.inputs: xd, model.labels: yd, 
                                                     model.dropout_rate: 1})
       acc_list.append(acc)
-    acc = np.mean(acc_list)     
+      loss_list.append(loss)
+    acc, loss = np.mean(acc_list), np.mean(loss_list)
 
     current = time.asctime(time.localtime(time.time()))
     print("""{0} Step {1:5} Learning rate: {2:.6f} Losss: {3:.4f} Accuracy: {4:.4f}"""
@@ -69,12 +70,12 @@ def main(unused_argv):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument('--epochs', type=int, default=50,
+  parser.add_argument('--dataset', type=str, default='AG',
+                      help='The experimental dataset.')
+  parser.add_argument('--epochs', type=int, default=30,
                       help='Number of epochs to run trainer.')
   parser.add_argument('--learning_rate', type=float, default=1e-2,
                       help='Initial learning rate.')
-  parser.add_argument('--num_classes', type=int, default=4, 
-                      help='the number of classes.')
   parser.add_argument('--embedding_size', type=int, default=60, 
                       help='The size of embedding.')
   parser.add_argument('--batch_size', type=int, default=128, 
