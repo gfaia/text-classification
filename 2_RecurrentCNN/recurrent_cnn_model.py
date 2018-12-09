@@ -1,3 +1,6 @@
+"""
+  gfaia - gutianfeigtf@163.com
+"""
 import tensorflow as tf
 from tensorflow.contrib import rnn
 

@@ -1,49 +1,37 @@
-"""Deep Pyramid Convolutional Neural Networks."""
+"""
+  gfaia - gutianfeigtf@163.com
+
+Very Deep Convolutional Networks. Conneau et al.
+"""
 import tensorflow as tf
 
 
-def conv_layer(inputs, filter_size, in_channels, out_channels, name):
+def conv_layer(inputs, filter_size, in_channels, out_channels, stride_size, name):
   """A 1-D convolutional layer."""
   with tf.name_scope(name):
     W = tf.Variable(tf.truncated_normal([filter_size, in_channels, out_channels], 
                                         stddev=0.1), name='W')
     b = tf.Variable(tf.constant(0.1, shape=[out_channels]), name='bias')
-    conv = tf.nn.conv1d(inputs, W, stride=1, padding='SAME', name='conv')
-    outputs = tf.nn.relu(tf.nn.bias_add(conv, b), name='relu')
+    conv = tf.nn.conv1d(inputs, W, stride=stride_size, padding='SAME', name='conv')
+    outputs = tf.nn.relu(tf.nn.bias_add(conv, b))
 
   return outputs
 
 
-def conv_block(inputs, index):
-  """The block containing the conv and max pool layers."""
-  with tf.name_scope('block-%s' % index):
-    with tf.name_scope('block-%s-max-pooling' % index):
-      pooled = tf.layers.max_pooling1d(inputs, 3, 2, padding='SAME')
-
-    conv1 = conv_layer(pooled, 3, 250, 250, 'block-%s-conv1' % index)
-    conv2 = conv_layer(conv1, 3, 250, 250, 'block-%s-conv2' % index)
-
-    outputs = pooled + conv2
-
-    return outputs
-
-
-class DPCNN(object):
+class VDCNN(object):
   """The cnn model of text classification."""
   def __init__(self, 
                num_classes, seq_len, embedding_size, vocab_size,
-               weight_decay, init_lr, decay_steps, decay_rate, 
-               is_rand=False, is_finetuned=False, embeddings=None):
+               weight_decay, init_lr, decay_steps, decay_rate):
+
+    # n_filters
+    self.conv_layers = [64, 128, 256, 512, 1024]
 
     # parameters init
     self.num_classes = num_classes
     self.seq_len = seq_len
     self.embedding_size = embedding_size
     self.vocab_size = vocab_size
-
-    self.is_rand = is_rand
-    self.is_finetuned = is_finetuned
-    self.embeddings = embeddings
 
     # weight decay
     self.weight_decay = weight_decay
@@ -61,32 +49,28 @@ class DPCNN(object):
     self.labels = tf.placeholder(tf.int32, [None], name='labels')
     self.onehot_labels = tf.one_hot(self.labels, self.num_classes)
 
-    # words embeddings
-    with tf.device("/gpu:0"):
-      if self.is_rand:
-        W = tf.Variable(tf.truncated_normal([self.vocab_size, self.embedding_size], 
-                                            stddev=0.1), name="W")
-      else:
-        W = tf.get_variable(name='W', trainable=self.is_finetuned,
-                            shape=[self.vocab_size, self.embedding_size], 
-                            initializer=tf.constant_initializer(self.embeddings))
+    # Lookup table 16
+    look_up_table = tf.Variable(tf.truncated_normal([self.vocab_size, self.embedding_size], 
+                                                    stddev=0.1), name='look-up-table')
+    embedded_chars = tf.nn.embedding_lookup(look_up_table, self.inputs)
+    conv = conv_layer(embedded_chars, 3, self.embedding_size, 64, 1, name='temp-conv')
 
-    embedded_chars = tf.nn.embedding_lookup(W, self.inputs)
-    first_conv = conv_layer(embedded_chars, 3, self.embedding_size, 250, 'first-conv')
-    
-    with tf.name_scope('init-block'):
-      init_block1 = conv_layer(first_conv, 3, 250, 250, 'init-block-conv1')
-      init_block2 = conv_layer(init_block1, 3, 250, 250, 'init-block-conv2')
-      identity_map = first_conv + init_block2
-      conv = identity_map
+    # repeat the conv block
+    for i, cl in enumerate(self.conv_layers):
+      prior_filter = int(conv.get_shape()[2])
 
-    for bi in range(2):
-      conv = conv_block(conv, bi)
+      with tf.name_scope('block%s-0' % i):
+        conv = conv_layer(conv, 3, prior_filter, cl, 1, 'conv1')
+        conv = conv_layer(conv, 3, cl, cl, 1, 'conv2')
 
-    pooled = tf.layers.max_pooling1d(conv, 3, 2, padding='SAME')
+      with tf.name_scope('block%s-0' % i):
+        conv = conv_layer(conv, 3, cl, cl, 1, 'conv1')
+        conv = conv_layer(conv, 3, cl, cl, 1, 'conv2')
+      
+      conv = tf.layers.max_pooling1d(conv, 3, 2, padding='SAME')
 
-    nums_feature = int(pooled.get_shape()[1]) * int(pooled.get_shape()[2])
-    feature_flat = tf.reshape(pooled, [-1, nums_feature])
+    nums_feature = int(conv.get_shape()[1]) * int(conv.get_shape()[2])
+    feature_flat = tf.reshape(conv, [-1, nums_feature])
     feature_drop = tf.nn.dropout(feature_flat, self.dropout_rate)
 
     with tf.name_scope("inference"):

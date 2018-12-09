@@ -1,27 +1,58 @@
 """
   gfaia - gutianfeigtf@163.com
 
-The basic shallow cnn model for text classification. Yoon Kim (2014)
+A simple implementation of Deep Pyramid Convolutional Neural Networks. (Johnson and Zhang)
 """
 import tensorflow as tf
 
 
-class KimCNN(object):
+def conv_layer(inputs, filter_size, in_channels, out_channels, stride_size, name):
+  """A 1-D convolutional layer. Pre-activations op before convolution."""
+  with tf.name_scope(name):
+    W = tf.Variable(tf.truncated_normal([filter_size, in_channels, out_channels], 
+                                        stddev=0.1), name='W')
+    b = tf.Variable(tf.constant(0.1, shape=[out_channels]), name='bias')
+    pre_activation = tf.nn.relu(inputs, name='pre-activation')
+    conv = tf.nn.conv1d(pre_activation, W, stride=stride_size, padding='SAME', name='conv')
+    outputs = tf.nn.bias_add(conv, b)
+
+  return outputs
+
+
+def conv_block(inputs, index, filter_size, n_filters, stride_size, pool_size, pool_stride):
+  """The block containing the conv and max pool layers."""
+  with tf.name_scope('block-%s' % index):
+    pooled = tf.layers.max_pooling1d(inputs, pool_size, pool_stride, padding='SAME')
+
+    conv1 = conv_layer(pooled, filter_size, n_filters, n_filters, stride_size, 
+                       'block-%s-conv1' % index)
+    conv2 = conv_layer(conv1, filter_size, n_filters, n_filters, stride_size,
+                       'block-%s-conv2' % index)
+
+    # add identify map
+    outputs = pooled + conv2
+
+    return outputs
+
+
+class DPCNN(object):
   """The cnn model of text classification."""
   def __init__(self, 
                num_classes, seq_len, embedding_size, vocab_size,
                weight_decay, init_lr, decay_steps, decay_rate, 
                is_rand=False, is_finetuned=False, embeddings=None):
-    
-    # Kim et al. KimCNN model setting.
-    self.filter_sizes = [3, 4, 5]
-    self.num_filters = 100
+
+    # conv filter size, filters num, stride size
+    self.conv_layer = (3, 250, 1)
+    self.pool_layer = (3, 2)
+    self.num_blocks = 7
 
     # parameters init
     self.num_classes = num_classes
     self.seq_len = seq_len
     self.embedding_size = embedding_size
     self.vocab_size = vocab_size
+
     self.is_rand = is_rand
     self.is_finetuned = is_finetuned
     self.embeddings = embeddings
@@ -37,10 +68,12 @@ class KimCNN(object):
     self.model(), self.loss_acc(), self.train_op()
 
   def model(self):
-    # word embeddings -> cnn (filter * k) -> fc -> logits
+
     self.inputs = tf.placeholder(tf.int32, [None, self.seq_len], name='inputs')
     self.labels = tf.placeholder(tf.int32, [None], name='labels')
     self.onehot_labels = tf.one_hot(self.labels, self.num_classes)
+    filter_size, n_filters, stride_size = self.conv_layer
+    pool_size, pool_stride = self.pool_layer
 
     # words embeddings
     with tf.device("/gpu:0"):
@@ -53,33 +86,21 @@ class KimCNN(object):
                             initializer=tf.constant_initializer(self.embeddings))
 
     embedded_chars = tf.nn.embedding_lookup(W, self.inputs)
-    embedded_chars_expanded = tf.expand_dims(embedded_chars, -1)
+    conv = conv_layer(embedded_chars, filter_size, self.embedding_size, n_filters, stride_size, 
+                      'init-conv')
+    # repeat the conv block 
+    for i in range(self.num_blocks):
+      conv = conv_block(conv, i, filter_size, n_filters, stride_size, pool_size, pool_stride)
 
-    # pool layer
-    pooled_outputs = []
-    for i, filter_size in enumerate(self.filter_sizes):
-      with tf.name_scope("conv-maxpool-%s" % filter_size):
-        W = tf.Variable(tf.truncated_normal(
-          [filter_size, self.embedding_size, 1, self.num_filters], stddev=0.1), name='W')
-        b = tf.Variable(tf.constant(0.1, shape=[self.num_filters]), name='bias')
-        conv = tf.nn.conv2d(embedded_chars_expanded, W, 
-                            strides=[1, 1, 1, 1], padding='VALID', name='conv')
-        h = tf.nn.relu(tf.nn.bias_add(conv, b), name="relu")
-        pooled = tf.nn.max_pool(h, 
-                                ksize=[1, self.seq_len - filter_size + 1, 1, 1], 
-                                strides=[1, 1, 1, 1], padding='VALID', name='pool')
-        pooled_outputs.append(pooled)
-
-    num_filters_total = self.num_filters * len(self.filter_sizes)
-    h_pool = tf.concat(pooled_outputs, 3)
-    h_pool_flat = tf.reshape(h_pool, [-1, num_filters_total])
-    h_drop = tf.nn.dropout(h_pool_flat, self.dropout_rate)
+    nums_feature = int(conv.get_shape()[1]) * int(conv.get_shape()[2])
+    feature_flat = tf.reshape(conv, [-1, nums_feature])
+    feature_drop = tf.nn.dropout(feature_flat, self.dropout_rate)
 
     with tf.name_scope("inference"):
       W = tf.Variable(tf.truncated_normal(
-        [num_filters_total, self.num_classes], stddev=0.1), name='W')
+        [nums_feature, self.num_classes], stddev=0.1), name='W')
       b = tf.Variable(tf.constant(0.1, shape=[self.num_classes]), name='bias')
-      self.logits = tf.nn.xw_plus_b(h_drop, W, b, name='logits')
+      self.logits = tf.nn.xw_plus_b(feature_drop, W, b, name='logits')
       self.predictions = tf.argmax(self.logits, 1, name='predictions')
 
   def loss_acc(self):

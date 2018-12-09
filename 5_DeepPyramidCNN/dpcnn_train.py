@@ -15,20 +15,21 @@ from tqdm import tqdm
 import time
 import tensorflow as tf
 import helper
-from charcnn_model import CharCNN
+from dpcnn_model import DPCNN
 
 
 def main(unused_argv):
+  x_train, y_train, x_test, y_test, embeddings, vocab_size, n_labels = \
+    helper.data_loader(dataset=FLAGS.dataset, is_rand=FLAGS.is_rand, seq_len=FLAGS.seq_len)
 
-  x_train, y_train, x_test, y_test, _, vocab_size, n_labels = \
-    helper.data_loader(dataset=FLAGS.dataset, char_level=True, seq_len=FLAGS.seq_len)
-
-  model = CharCNN(
-    seq_len=FLAGS.seq_len, num_classes=n_labels, alphabet_size=vocab_size,
+  model = DPCNN(
+    num_classes=n_labels, seq_len=FLAGS.seq_len, 
+    embedding_size=FLAGS.embedding_size, vocab_size=vocab_size, 
     weight_decay=FLAGS.weight_decay, init_lr=FLAGS.learning_rate, 
-    decay_steps=FLAGS.decay_steps, decay_rate=FLAGS.decay_rate
+    decay_steps=FLAGS.decay_steps, decay_rate=FLAGS.decay_rate, 
+    is_rand=FLAGS.is_rand, is_finetuned=FLAGS.is_finetuned, embeddings=embeddings
     )
-  
+
   sess = tf.InteractiveSession()
   tf.summary.scalar('loss', model.loss)
   tf.summary.scalar("accuracy", model.accuracy)
@@ -76,11 +77,11 @@ if __name__ == "__main__":
                       help='Number of epochs to run trainer.')
   parser.add_argument('--learning_rate', type=float, default=1e-2,
                       help='Initial learning rate.')
-  parser.add_argument('--embedding_size', type=int, default=60, 
+  parser.add_argument('--embedding_size', type=int, default=300, 
                       help='The size of embedding.')
   parser.add_argument('--batch_size', type=int, default=128, 
                       help='The size of batch.')
-  parser.add_argument('--seq_len', type=int, default=1014, 
+  parser.add_argument('--seq_len', type=int, default=200, 
                       help='The length of sequence.')
   parser.add_argument('--dropout_rate', type=float, default=0.5, 
                       help='The probability rate of dropout')
@@ -90,10 +91,14 @@ if __name__ == "__main__":
                       help='The period of decay.')
   parser.add_argument('--decay_rate', type=float, default=0.65, 
                       help='The rate of decay.')
-  parser.add_argument('--log_dir', type=str, default="logs/charcnn",
+  parser.add_argument('--is_rand', type=bool, default=False,
+                      help='Whether use random words embeddings or static version.')
+  parser.add_argument('--is_finetuned', type=bool, default=False, 
+                      help='Whether finetune the pertrained word embeddings.')
+  parser.add_argument('--log_dir', type=str, default="logs/dpcnn",
                       help='Summaries logs directory')
   parser.add_argument('--model_dir', type=str, 
-                      default="models/charcnn.ckpt",
+                      default="models/dpcnn.ckpt",
                       help='The path to save model.')
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run()

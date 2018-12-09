@@ -1,4 +1,8 @@
-"""FastText without <pad> - average words embedding as the feature."""
+"""
+  gfaia - gutianfeigtf@163.com
+
+FastText without <pad> - average words embedding as the feature.
+"""
 import tensorflow as tf
 
 

@@ -36,9 +36,9 @@ Joulin et al. propose a very simple baseline model for text classification. This
 
 ### 4. Char CNN
 
-Different from word-level models, Zhang et al. introduce the design of character-level ConvNets for text classification.
+Different from word-level models, Zhang et al.(CharCNN) introduce the design of character-level ConvNets for text classification. Conneau et al.(VDCNN) point that the deeper models perform better and able to learn hierarchical representations of the whole sentences.
 
-### 5. Deep Pyramid CNN
+### 5. Deep Pyramid CNN (DPCNN)
 
 Based on the shallow CNN, DPCNN, proposed by Johnson and Zhang, is a deeper CNN model. They fixed the number of filters in each convolutional layer, and introduce the identity map. 
 
@@ -75,4 +75,6 @@ Relation Classification, [Zhou et al.](http://www.aclweb.org/anthology/P16-2034)
 
 6. Character-level Convolutional Networks for Text Classification, [Zhang et al.](https://papers.nips.cc/paper/5782-character-level-convolutional-networks-for-text-classification.pdf)
 
-7. Deep Pyramid Convolutional Neural Networks for Text Categorization, [Johnson and Zhang](https://ai.tencent.com/ailab/media/publications/ACL3-Brady.pdf)
+7. Very Deep Convolutional Networks for Text Classification, [Conneau et al.](http://www.aclweb.org/anthology/E17-1104)
+
+8. Deep Pyramid Convolutional Neural Networks for Text Categorization, [Johnson and Zhang](https://ai.tencent.com/ailab/media/publications/ACL3-Brady.pdf)

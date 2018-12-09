@@ -1,6 +1,7 @@
 """
-  Common utils for data preprocessing.
   gfaia - gutianfeigtf@163.com
+
+Common utils for data preprocessing.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -237,7 +238,7 @@ def ag_data_loader(seq_len, is_rand=False, char_level=False, embedding_size=300)
   return x_train, y_train, x_test, y_test, embeddings, vocab_size, n_labels
 
 
-def data_loader(seq_len, dataset='MR', is_rand=False, char_level=False, embedding_size=300):
+def data_loader(seq_len, dataset='MR', is_rand=True, char_level=False, embedding_size=300):
   """Collect all data loader functions."""
   data_loaders = {'MR': mr_data_loader, 
                   'AG': ag_data_loader}
