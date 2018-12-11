@@ -55,9 +55,11 @@ Based on the shallow CNN, DPCNN, proposed by Johnson and Zhang, is a deeper CNN 
 | Recurrent NN             | 79.64 |  -    |
 | Recurrent CNN            | 81.52 | 91.86 |
 | Recurrent NN + Atten     | 81.99 |  -    |
+| CNN + Lstm               | 81.00 |  -    |
 | FastText                 | 79.64 | 92.01 |
 | CharCNN                  |  -    | 89.06 |
-| DPCNN                    | 78.45 | 92.16 |
+| DPCNN                    |  -    | 92.16 |
+| VDCNN                    |  -    | 90.61 |
 
 ## References
 
@@ -78,3 +80,5 @@ Relation Classification, [Zhou et al.](http://www.aclweb.org/anthology/P16-2034)
 7. Very Deep Convolutional Networks for Text Classification, [Conneau et al.](http://www.aclweb.org/anthology/E17-1104)
 
 8. Deep Pyramid Convolutional Neural Networks for Text Categorization, [Johnson and Zhang](https://ai.tencent.com/ailab/media/publications/ACL3-Brady.pdf)
+
+9. A C-LSTM Neural Network for Text Classification, [Zhou et al.](https://arxiv.org/pdf/1511.08630)

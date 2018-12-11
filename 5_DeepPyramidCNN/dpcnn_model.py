@@ -6,15 +6,27 @@ A simple implementation of Deep Pyramid Convolutional Neural Networks. (Johnson 
 import tensorflow as tf
 
 
+# def conv_layer(inputs, filter_size, in_channels, out_channels, stride_size, name):
+#   """A 1-D convolutional layer. Pre-activations op before convolution."""
+#   with tf.name_scope(name):
+#     W = tf.Variable(tf.truncated_normal([filter_size, in_channels, out_channels], 
+#                                         stddev=0.1), name='W')
+#     b = tf.Variable(tf.constant(0.1, shape=[out_channels]), name='bias')
+#     pre_activation = tf.nn.relu(inputs, name='pre-activation')
+#     conv = tf.nn.conv1d(pre_activation, W, stride=stride_size, padding='SAME', name='conv')
+#     outputs = tf.nn.bias_add(conv, b)
+
+#   return outputs
+
+
 def conv_layer(inputs, filter_size, in_channels, out_channels, stride_size, name):
   """A 1-D convolutional layer. Pre-activations op before convolution."""
   with tf.name_scope(name):
     W = tf.Variable(tf.truncated_normal([filter_size, in_channels, out_channels], 
                                         stddev=0.1), name='W')
     b = tf.Variable(tf.constant(0.1, shape=[out_channels]), name='bias')
-    pre_activation = tf.nn.relu(inputs, name='pre-activation')
-    conv = tf.nn.conv1d(pre_activation, W, stride=stride_size, padding='SAME', name='conv')
-    outputs = tf.nn.bias_add(conv, b)
+    conv = tf.nn.conv1d(inputs, W, stride=stride_size, padding='SAME', name='conv')
+    outputs = tf.nn.relu(tf.nn.bias_add(conv, b))
 
   return outputs
 
@@ -45,7 +57,7 @@ class DPCNN(object):
     # conv filter size, filters num, stride size
     self.conv_layer = (3, 250, 1)
     self.pool_layer = (3, 2)
-    self.num_blocks = 7
+    self.num_blocks = 3
 
     # parameters init
     self.num_classes = num_classes

@@ -6,13 +6,14 @@ Very Deep Convolutional Networks. Conneau et al.
 import tensorflow as tf
 
 
-def conv_layer(inputs, filter_size, in_channels, out_channels, stride_size, name):
+def conv_layer(inputs, filter_size, in_channels, out_channels, stride_size, is_training, name):
   """A 1-D convolutional layer."""
   with tf.name_scope(name):
     W = tf.Variable(tf.truncated_normal([filter_size, in_channels, out_channels], 
                                         stddev=0.1), name='W')
     b = tf.Variable(tf.constant(0.1, shape=[out_channels]), name='bias')
     conv = tf.nn.conv1d(inputs, W, stride=stride_size, padding='SAME', name='conv')
+    conv = tf.layers.batch_normalization(conv, training=is_training)
     outputs = tf.nn.relu(tf.nn.bias_add(conv, b))
 
   return outputs
@@ -25,7 +26,7 @@ class VDCNN(object):
                weight_decay, init_lr, decay_steps, decay_rate):
 
     # n_filters
-    self.conv_layers = [64, 128, 256, 512, 1024]
+    self.conv_layers = [64, 128, 256]
 
     # parameters init
     self.num_classes = num_classes
@@ -48,25 +49,27 @@ class VDCNN(object):
     self.inputs = tf.placeholder(tf.int32, [None, self.seq_len], name='inputs')
     self.labels = tf.placeholder(tf.int32, [None], name='labels')
     self.onehot_labels = tf.one_hot(self.labels, self.num_classes)
+    self.is_training = tf.placeholder(tf.bool)
 
     # Lookup table 16
     look_up_table = tf.Variable(tf.truncated_normal([self.vocab_size, self.embedding_size], 
                                                     stddev=0.1), name='look-up-table')
     embedded_chars = tf.nn.embedding_lookup(look_up_table, self.inputs)
-    conv = conv_layer(embedded_chars, 3, self.embedding_size, 64, 1, name='temp-conv')
+    conv = conv_layer(embedded_chars, 3, self.embedding_size, 64, 1, self.is_training, 
+                      name='temp-conv')
 
     # repeat the conv block
     for i, cl in enumerate(self.conv_layers):
       prior_filter = int(conv.get_shape()[2])
 
       with tf.name_scope('block%s-0' % i):
-        conv = conv_layer(conv, 3, prior_filter, cl, 1, 'conv1')
-        conv = conv_layer(conv, 3, cl, cl, 1, 'conv2')
+        conv = conv_layer(conv, 3, prior_filter, cl, 1, self.is_training, 'conv1')
+        conv = conv_layer(conv, 3, cl, cl, 1, self.is_training, 'conv2')
 
       with tf.name_scope('block%s-0' % i):
-        conv = conv_layer(conv, 3, cl, cl, 1, 'conv1')
-        conv = conv_layer(conv, 3, cl, cl, 1, 'conv2')
-      
+        conv = conv_layer(conv, 3, cl, cl, 1, self.is_training, 'conv1')
+        conv = conv_layer(conv, 3, cl, cl, 1, self.is_training, 'conv2')
+
       conv = tf.layers.max_pooling1d(conv, 3, 2, padding='SAME')
 
     nums_feature = int(conv.get_shape()[1]) * int(conv.get_shape()[2])
@@ -97,8 +100,9 @@ class VDCNN(object):
 
   def train_op(self):
     
-    optimizer = tf.train.AdamOptimizer(self.learning_rate)
-    grads_and_vars = optimizer.compute_gradients(self.loss)
-    # grads_and_vars = [(tf.clip_by_value(grad, -1., 1.), var) 
-    #  for grad, var in grads_and_vars]
-    self.optimization = optimizer.apply_gradients(grads_and_vars)
+    with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
+      optimizer = tf.train.AdamOptimizer(self.learning_rate)
+      grads_and_vars = optimizer.compute_gradients(self.loss)
+      # grads_and_vars = [(tf.clip_by_value(grad, -1., 1.), var) 
+      #  for grad, var in grads_and_vars]
+      self.optimization = optimizer.apply_gradients(grads_and_vars)
