@@ -78,6 +78,7 @@ class CharCNN(object):
     return outputs
 
   def model(self):
+    # char-embeddings + multi-layer convs -> fc
     self.inputs = tf.placeholder(tf.int32, [None, self.seq_len], name='inputs')
     self.onehot_inputs = tf.one_hot(self.inputs, self.alphabet_size)
     self.labels = tf.placeholder(tf.int32, [None], name='labels')
@@ -102,7 +103,6 @@ class CharCNN(object):
       W = tf.Variable(tf.truncated_normal([fc_size, self.num_classes], stddev=0.1), name='W')
       b = tf.Variable(tf.constant(0.1, shape=[self.num_classes]), name='bias')
       self.logits = tf.nn.xw_plus_b(fc, W, b, name='logits')
-      self.predictions = tf.argmax(self.logits, 1, name='predictions')
 
   def loss_acc(self):
 
@@ -111,11 +111,11 @@ class CharCNN(object):
                                                        logits=self.logits)
       
       # exculde the biases parameters
-      self.loss = tf.add(tf.reduce_mean(losses), 
-        self.weight_decay * tf.add_n(
+      self.loss = tf.add(tf.reduce_mean(losses), self.weight_decay * tf.add_n(
           [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
 
     with tf.name_scope("accuracy"):
+      self.predictions = tf.argmax(self.logits, 1, name='predictions')
       correct_predictions = tf.equal(self.predictions, tf.argmax(self.onehot_labels, 1))
       self.accuracy = tf.reduce_mean(tf.cast(correct_predictions, "float"), name='accuracy')
 

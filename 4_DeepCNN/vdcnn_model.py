@@ -25,7 +25,7 @@ class VDCNN(object):
                num_classes, seq_len, embedding_size, vocab_size,
                weight_decay, init_lr, decay_steps, decay_rate):
 
-    # n_filters
+    # convs settings, n_filters
     self.conv_layers = [64, 128, 256]
 
     # parameters init
@@ -45,7 +45,7 @@ class VDCNN(object):
     self.model(), self.loss_acc(), self.train_op()
 
   def model(self):
-
+    # char-embeddings + multi-layer convs + fc
     self.inputs = tf.placeholder(tf.int32, [None, self.seq_len], name='inputs')
     self.labels = tf.placeholder(tf.int32, [None], name='labels')
     self.onehot_labels = tf.one_hot(self.labels, self.num_classes)
@@ -81,7 +81,6 @@ class VDCNN(object):
         [nums_feature, self.num_classes], stddev=0.1), name='W')
       b = tf.Variable(tf.constant(0.1, shape=[self.num_classes]), name='bias')
       self.logits = tf.nn.xw_plus_b(feature_drop, W, b, name='logits')
-      self.predictions = tf.argmax(self.logits, 1, name='predictions')
 
   def loss_acc(self):
 
@@ -90,11 +89,11 @@ class VDCNN(object):
                                                        logits=self.logits)
       
       # exculde the biases parameters
-      self.loss = tf.add(tf.reduce_mean(losses), 
-        self.weight_decay * tf.add_n(
-          [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
+      self.loss = tf.add(tf.reduce_mean(losses), self.weight_decay * tf.add_n(
+        [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
 
     with tf.name_scope("accuracy"):
+      self.predictions = tf.argmax(self.logits, 1, name='predictions')
       correct_predictions = tf.equal(self.predictions, tf.argmax(self.onehot_labels, 1))
       self.accuracy = tf.reduce_mean(tf.cast(correct_predictions, "float"), name='accuracy')
 

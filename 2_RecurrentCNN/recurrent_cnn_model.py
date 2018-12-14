@@ -16,15 +16,16 @@ class ReccurentCNN(object):
     self.num_classes = num_classes
     self.seq_len = seq_len
     self.embedding_size = embedding_size
-    self.weight_decay = weight_decay
     self.vocab_size = vocab_size
+    self.rnn_size = rnn_size
+
     self.is_rand = is_rand
     self.is_finetuned = is_finetuned
     self.embeddings = embeddings
-    self.rnn_size = rnn_size
-    self.dropout_rate = tf.placeholder(tf.float32, name="dropout_rate")
 
     # weight decay
+    self.weight_decay = weight_decay
+    self.dropout_rate = tf.placeholder(tf.float32, name="dropout_rate")
     self.global_step = tf.Variable(0, trainable=False)
     self.add_global = self.global_step.assign_add(1)
     self.learning_rate = tf.train.exponential_decay(init_lr, 
@@ -35,12 +36,12 @@ class ReccurentCNN(object):
     self.model(), self.loss_acc(), self.train_op()
 
   def model(self):
-    # word embeddings -> Bidirectional LSTM  -> max pooling -> fc -> logits
+    # word embeddings -> bidirectional lstm, identity map  -> max pooling -> fc
     self.inputs = tf.placeholder(tf.int32, [None, self.seq_len], name='inputs')
     self.labels = tf.placeholder(tf.int32, [None], name='labels')
     self.onehot_labels = tf.one_hot(self.labels, self.num_classes)
 
-    # word embeddings, option: is_or_not random
+    # word embeddings
     with tf.device('/gpu:0'):
       if self.is_rand:
         W = tf.Variable(tf.truncated_normal([self.vocab_size, self.embedding_size], 
@@ -53,7 +54,7 @@ class ReccurentCNN(object):
     # embedding words
     embedded = tf.nn.embedding_lookup(W, self.inputs, "embedded")
 
-    # Bi-lstm layer
+    # bi-lstm layer, identity map
     lstm_fw_cell = rnn.BasicLSTMCell(self.rnn_size)
     lstm_bw_cell = rnn.BasicLSTMCell(self.rnn_size)
     if self.dropout_rate is not None:
@@ -69,6 +70,7 @@ class ReccurentCNN(object):
     final_outputs = tf.concat([forward_outputs, embedded, reverse_outputs], 2)
     # reduce_mean max pooling
     feature = tf.reduce_max(final_outputs, axis=1)
+    
     # feature = tf.reduce_mean(final_outputs, axis=1)
     outputs_mean_dim = int(feature.shape[1])
 
@@ -78,7 +80,6 @@ class ReccurentCNN(object):
                                           mean=0, stddev=0.1), name="w")
       b = tf.Variable(tf.constant(value=0.1, shape=[self.num_classes]), name="bias")
       self.logits = tf.add(tf.matmul(feature, w), b)
-      self.predictions = tf.argmax(self.logits, 1, name='predictions')
 
   def loss_acc(self):
     """the loss and accuracy of model"""
@@ -90,6 +91,7 @@ class ReccurentCNN(object):
         [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
 
     with tf.name_scope("accuracy"):
+      self.predictions = tf.argmax(self.logits, 1, name='predictions')
       correct_predictions = tf.equal(self.predictions, tf.argmax(self.onehot_labels, 1))
       self.accuracy = tf.reduce_mean(tf.cast(correct_predictions, "float"), name='accuracy')
 

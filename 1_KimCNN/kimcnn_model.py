@@ -37,7 +37,7 @@ class KimCNN(object):
     self.model(), self.loss_acc(), self.train_op()
 
   def model(self):
-    # word embeddings -> cnn (filter * k) -> fc -> logits
+    # word embeddings -> cnn (filter * k) -> overtime max-pooling -> fc
     self.inputs = tf.placeholder(tf.int32, [None, self.seq_len], name='inputs')
     self.labels = tf.placeholder(tf.int32, [None], name='labels')
     self.onehot_labels = tf.one_hot(self.labels, self.num_classes)
@@ -55,7 +55,7 @@ class KimCNN(object):
     embedded_chars = tf.nn.embedding_lookup(W, self.inputs)
     embedded_chars_expanded = tf.expand_dims(embedded_chars, -1)
 
-    # pool layer
+    # k-filters cnn + overtime max-pooling
     pooled_outputs = []
     for i, filter_size in enumerate(self.filter_sizes):
       with tf.name_scope("conv-maxpool-%s" % filter_size):
@@ -75,12 +75,12 @@ class KimCNN(object):
     h_pool_flat = tf.reshape(h_pool, [-1, num_filters_total])
     h_drop = tf.nn.dropout(h_pool_flat, self.dropout_rate)
 
+    # inference layer
     with tf.name_scope("inference"):
       W = tf.Variable(tf.truncated_normal(
         [num_filters_total, self.num_classes], stddev=0.1), name='W')
       b = tf.Variable(tf.constant(0.1, shape=[self.num_classes]), name='bias')
       self.logits = tf.nn.xw_plus_b(h_drop, W, b, name='logits')
-      self.predictions = tf.argmax(self.logits, 1, name='predictions')
 
   def loss_acc(self):
 
@@ -89,11 +89,11 @@ class KimCNN(object):
                                                        logits=self.logits)
       
       # exculde the biases parameters
-      self.loss = tf.add(tf.reduce_mean(losses), 
-        self.weight_decay * tf.add_n(
-          [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
+      self.loss = tf.add(tf.reduce_mean(losses), self.weight_decay * tf.add_n(
+        [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
 
     with tf.name_scope("accuracy"):
+      self.predictions = tf.argmax(self.logits, 1, name='predictions')
       correct_predictions = tf.equal(self.predictions, tf.argmax(self.onehot_labels, 1))
       self.accuracy = tf.reduce_mean(tf.cast(correct_predictions, "float"), name='accuracy')
 
@@ -101,6 +101,4 @@ class KimCNN(object):
     
     optimizer = tf.train.AdamOptimizer(self.learning_rate)
     grads_and_vars = optimizer.compute_gradients(self.loss)
-    # grads_and_vars = [(tf.clip_by_value(grad, -1., 1.), var) 
-    #  for grad, var in grads_and_vars]
     self.optimization = optimizer.apply_gradients(grads_and_vars)

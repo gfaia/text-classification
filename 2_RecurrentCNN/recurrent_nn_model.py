@@ -35,7 +35,7 @@ class RecurrentNN(object):
     self.model(), self.loss_acc(), self.train_op()
 
   def model(self):
-    # word embeddings -> Bidirectional LSTM  -> mean pooling -> fc -> logits
+    # word embeddings -> Bidirectional LSTM  -> mean pooling -> fc
     self.inputs = tf.placeholder(tf.int32, [None, self.seq_len], name='inputs')
     self.labels = tf.placeholder(tf.int32, [None], name='labels')
     self.onehot_labels = tf.one_hot(self.labels, self.num_classes)
@@ -90,7 +90,6 @@ class RecurrentNN(object):
                                           mean=0, stddev=0.1), name="w")
       b = tf.Variable(tf.constant(value=1.0, shape=[self.num_classes]), name="bias")
       self.logits = tf.add(tf.matmul(feature, w), b)
-      self.predictions = tf.argmax(self.logits, 1, name='predictions')
 
   def loss_acc(self):
     """the loss and accuracy of model"""
@@ -102,6 +101,7 @@ class RecurrentNN(object):
         [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
 
     with tf.name_scope("accuracy"):
+      self.predictions = tf.argmax(self.logits, 1, name='predictions')
       correct_predictions = tf.equal(self.predictions, tf.argmax(self.onehot_labels, 1))
       self.accuracy = tf.reduce_mean(tf.cast(correct_predictions, "float"), name='accuracy')
 

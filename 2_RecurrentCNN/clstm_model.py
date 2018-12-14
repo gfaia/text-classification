@@ -13,6 +13,7 @@ class CLstm(object):
                weight_decay, init_lr, decay_steps, decay_rate, 
                is_rand=False, is_finetuned=False, embeddings=None):
     
+    # filter layer parameters
     self.filter_size = 3
     self.n_filters = 256
 
@@ -38,7 +39,7 @@ class CLstm(object):
     self.model(), self.loss_acc(), self.train_op()
 
   def model(self):
-    # word embeddings -> cnn (filter * k) -> fc -> logits
+    # word embeddings -> cnn -> bi-lstm -> fc
     self.inputs = tf.placeholder(tf.int32, [None, self.seq_len], name='inputs')
     self.labels = tf.placeholder(tf.int32, [None], name='labels')
     self.onehot_labels = tf.one_hot(self.labels, self.num_classes)
@@ -55,6 +56,7 @@ class CLstm(object):
 
     embedded_chars = tf.nn.embedding_lookup(W, self.inputs)
 
+    # cnn
     with tf.name_scope('conv-layer'):
       W = tf.Variable(tf.truncated_normal([self.filter_size, self.embedding_size, self.n_filters], 
                                           stddev=0.1), name='W')
@@ -62,7 +64,7 @@ class CLstm(object):
       conv = tf.nn.conv1d(embedded_chars, W, stride=1, padding='VALID', name='conv')
       conv = tf.nn.relu(tf.nn.bias_add(conv, b))
 
-    # Bi-lstm layer
+    # bi-lstm layer
     lstm_fw_cell = rnn.BasicLSTMCell(self.rnn_size)
     lstm_bw_cell = rnn.BasicLSTMCell(self.rnn_size)
     if self.dropout_rate is not None:
@@ -82,7 +84,6 @@ class CLstm(object):
                                           mean=0, stddev=0.1), name="w")
       b = tf.Variable(tf.constant(value=1.0, shape=[self.num_classes]), name="bias")
       self.logits = tf.add(tf.matmul(feature, w), b)
-      self.predictions = tf.argmax(self.logits, 1, name='predictions')
 
   def loss_acc(self):
 
@@ -91,11 +92,11 @@ class CLstm(object):
                                                        logits=self.logits)
       
       # exculde the biases parameters
-      self.loss = tf.add(tf.reduce_mean(losses), 
-        self.weight_decay * tf.add_n(
-          [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
+      self.loss = tf.add(tf.reduce_mean(losses), self.weight_decay * tf.add_n(
+        [tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]))
 
     with tf.name_scope("accuracy"):
+      self.predictions = tf.argmax(self.logits, 1, name='predictions')
       correct_predictions = tf.equal(self.predictions, tf.argmax(self.onehot_labels, 1))
       self.accuracy = tf.reduce_mean(tf.cast(correct_predictions, "float"), name='accuracy')
 
@@ -103,6 +104,4 @@ class CLstm(object):
     
     optimizer = tf.train.AdamOptimizer(self.learning_rate)
     grads_and_vars = optimizer.compute_gradients(self.loss)
-    # grads_and_vars = [(tf.clip_by_value(grad, -1., 1.), var) 
-    #  for grad, var in grads_and_vars]
     self.optimization = optimizer.apply_gradients(grads_and_vars)
