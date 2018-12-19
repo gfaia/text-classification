@@ -16,19 +16,19 @@ import gensim
 from os.path import join
 
 
-data_dir = join(os.path.dirname(__file__), "data")
+DATA_DIR = join(os.path.dirname(__file__), "data")
 
 # Movie Review
-mr_data_dir = join(data_dir, "rt-polaritydata")
-mr_pos_data = join(mr_data_dir, "rt-polarity.pos")
-mr_neg_data = join(mr_data_dir, "rt-polarity.neg")
-mr_word2vec = join(mr_data_dir, "word2vec.txt")
+MR_DATA_DIR = join(DATA_DIR, "rt-polaritydata")
+MR_POS_DATA = join(MR_DATA_DIR, "rt-polarity.pos")
+MR_NEG_DATA = join(MR_DATA_DIR, "rt-polarity.neg")
+MR_WORD2VEC = join(MR_DATA_DIR, "word2vec.txt")
 
 # AG’s news corpus
-ag_data_dir = join(data_dir, "ag_news_csv")
-ag_train = join(ag_data_dir, "train.csv")
-ag_test = join(ag_data_dir, "test.csv")
-ag_word2vec = join(ag_data_dir, "word2vec.txt")
+AG_DATA_DIR = join(DATA_DIR, "ag_news_csv")
+AG_TRAIN = join(AG_DATA_DIR, "train.csv")
+AG_TEST = join(AG_DATA_DIR, "test.csv")
+AG_WORD2VEC = join(AG_DATA_DIR, "word2vec.txt")
 
 
 def clean_str(string):
@@ -120,8 +120,8 @@ def filter_vectors_from_word2vec(dataset_vocab, dataset_vectors):
   Args:
     dataset_vocab: a set of words appeared in text dataset, set type.
   """
-  word2vec_file = join(data_dir, "word2vec/GoogleNews-vectors-negative300.bin")
-  word2vec_vocab_file = join(data_dir, "word2vec/word2vec_vocab.txt")
+  word2vec_file = join(DATA_DIR, "word2vec/GoogleNews-vectors-negative300.bin")
+  word2vec_vocab_file = join(DATA_DIR, "word2vec/word2vec_vocab.txt")
   word2vec_vocab = set()
 
   word2vec = gensim.models.KeyedVectors.load_word2vec_format(word2vec_file, binary=True)
@@ -161,9 +161,9 @@ def build_embeddings(word_index, embedding_size, word2vec_file):
 def _mr_data_loader():
   """Load the data of movie reviews."""
   pos_examples = [s.decode("utf-8", "ignore").strip() 
-                  for s in list(open(mr_pos_data, mode="rb").readlines())]
+                  for s in list(open(MR_POS_DATA, mode="rb").readlines())]
   neg_examples = [s.decode("utf-8", "ignore").strip() 
-                  for s in list(open(mr_neg_data, mode="rb").readlines())]
+                  for s in list(open(MR_NEG_DATA, mode="rb").readlines())]
 
   pos_nums, neg_nums = len(pos_examples), len(neg_examples)
   texts = pos_examples + neg_examples
@@ -195,7 +195,7 @@ def mr_data_loader(seq_len, is_rand=False, char_level=False, embedding_size=300)
   embeddings = None
 
   if not is_rand:
-    embeddings = build_embeddings(tp.word_index, embedding_size, mr_word2vec)
+    embeddings = build_embeddings(tp.word_index, embedding_size, MR_WORD2VEC)
 
   return x_train, y_train, x_test, y_test, embeddings, vocab_size, n_labels
 
@@ -218,8 +218,8 @@ def ag_data_loader(seq_len, is_rand=False, char_level=False, embedding_size=300)
   Args:
     seq_len: the final length of text sequence.
   """
-  train_texts, train_labels = _ag_data_loader(ag_train)
-  test_texts, test_labels = _ag_data_loader(ag_test)
+  train_texts, train_labels = _ag_data_loader(AG_TRAIN)
+  test_texts, test_labels = _ag_data_loader(AG_TEST)
   all_texts = train_texts + test_texts
   y_train = train_labels - 1
   y_test = test_labels - 1
@@ -233,7 +233,7 @@ def ag_data_loader(seq_len, is_rand=False, char_level=False, embedding_size=300)
   embeddings = None
 
   if not is_rand:
-    embeddings = build_embeddings(tp.word_index, embedding_size, ag_word2vec)
+    embeddings = build_embeddings(tp.word_index, embedding_size, AG_WORD2VEC)
 
   return x_train, y_train, x_test, y_test, embeddings, vocab_size, n_labels
 

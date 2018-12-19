@@ -32,12 +32,6 @@ def main(unused_argv):
     )
 
   sess = tf.InteractiveSession()
-  tf.summary.scalar('loss', model.loss)
-  tf.summary.scalar("accuracy", model.accuracy)
-  helper.detect_dir_is_existed(FLAGS.log_dir)
-  merged = tf.summary.merge_all()
-  train_writer = tf.summary.FileWriter(FLAGS.log_dir + '/train', sess.graph)
-  test_writer = tf.summary.FileWriter(FLAGS.log_dir + '/tests')
   # Add ops to save and restore all the variables.
   saver = tf.train.Saver()
   tf.global_variables_initializer().run()
@@ -54,9 +48,9 @@ def main(unused_argv):
     test_batches = helper.generate_batches(x_test, y_test, FLAGS.batch_size)
     acc_list, loss_list = [], []
     for xd, yd in tqdm(test_batches, desc="Testing"):
-      summary, acc, loss, lr = sess.run([merged, model.accuracy, model.loss, model.learning_rate], 
-                                        feed_dict={ model.inputs: xd, model.labels: yd, 
-                                                    model.dropout_rate: 1})
+      acc, loss, lr = sess.run([model.accuracy, model.loss, model.learning_rate], 
+                                feed_dict={ model.inputs: xd, model.labels: yd, 
+                                            model.dropout_rate: 1})
       acc_list.append(acc)
       loss_list.append(loss)
     acc, loss = np.mean(acc_list), np.mean(loss_list)
@@ -64,7 +58,6 @@ def main(unused_argv):
     current = time.asctime(time.localtime(time.time()))
     print("""{0} Step {1:5} Learning rate: {2:.6f} Losss: {3:.4f} Accuracy: {4:.4f}"""
           .format(current, i, lr, loss, acc))
-    test_writer.add_summary(summary, i)
 
   save_path = saver.save(sess, FLAGS.model_dir)
 
@@ -97,8 +90,6 @@ if __name__ == "__main__":
                       help='Whether use random words embeddings or static version.')
   parser.add_argument('--is_finetuned', type=bool, default=False, 
                       help='Whether finetune the pertrained word embeddings.')
-  parser.add_argument('--log_dir', type=str, default="logs/textcnn",
-                      help='Summaries logs directory')
   parser.add_argument('--model_dir', type=str, 
                       default="models/textcnn.ckpt",
                       help='The path to save model.')
