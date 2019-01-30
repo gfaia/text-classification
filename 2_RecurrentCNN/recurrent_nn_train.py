@@ -41,14 +41,14 @@ def main(unused_argv):
     print("----- Epoch {}/{} -----".format(e + 1, FLAGS.epochs))
     # training stage. 
     train_batches = helper.generate_batches(x_train, y_train, FLAGS.batch_size)
-    for xt, yt in tqdm(train_batches, desc="Training"):
+    for xt, yt in tqdm(train_batches, desc="Training", ascii=True):
       _, i = sess.run([model.optimization, model.add_global], 
                       feed_dict={ model.inputs: xt, model.labels: yt, 
                                   model.dropout_rate: FLAGS.dropout_rate})
     # testing stage.
     test_batches = helper.generate_batches(x_test, y_test, FLAGS.batch_size)
     acc_list, loss_list = [], []
-    for xd, yd in tqdm(test_batches, desc="Testing"):
+    for xd, yd in tqdm(test_batches, desc="Testing", ascii=True):
       acc, loss, lr = sess.run([model.accuracy, model.loss, model.learning_rate], 
                                 feed_dict={ model.inputs: xd, model.labels: yd, 
                                             model.dropout_rate: 1})

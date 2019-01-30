@@ -1,10 +1,7 @@
 """
-  gfaia - gutianfeigtf@163.com
+  CNN + LSTM model the most simple feature fusion concat
+  static: 82% (better than one model.)
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import sys
 sys.path.append('..')
 
@@ -15,7 +12,7 @@ import time
 import numpy as np
 import tensorflow as tf
 import helper
-from recurrent_nn_atten_model import RecurrentNNAtten
+from cnn_lstm_model import TextCNNAndLSTM
 
 
 def main(unused_argv):
@@ -23,10 +20,10 @@ def main(unused_argv):
   x_train, y_train, x_test, y_test, embeddings, vocab_size, n_labels = \
     helper.data_loader(dataset=FLAGS.dataset, is_rand=FLAGS.is_rand, seq_len=FLAGS.seq_len)
 
-  model = RecurrentNNAtten(
-    num_classes=n_labels, embedding_size=FLAGS.embedding_size, 
-    vocab_size=vocab_size, rnn_size=FLAGS.rnn_size, seq_len=FLAGS.seq_len,
-    init_lr=FLAGS.learning_rate, weight_decay=FLAGS.weight_decay, 
+  model = TextCNNAndLSTM(
+    num_classes=n_labels, seq_len=FLAGS.seq_len, 
+    embedding_size=FLAGS.embedding_size, rnn_size=FLAGS.rnn_size, vocab_size=vocab_size,
+    weight_decay=FLAGS.weight_decay, init_lr=FLAGS.learning_rate,
     decay_steps=FLAGS.decay_steps, decay_rate=FLAGS.decay_rate,  
     is_rand=FLAGS.is_rand, is_finetuned=FLAGS.is_finetuned, embeddings=embeddings
     )
@@ -49,8 +46,8 @@ def main(unused_argv):
     acc_list, loss_list = [], []
     for xd, yd in tqdm(test_batches, desc="Testing", ascii=True):
       acc, loss, lr = sess.run([model.accuracy, model.loss, model.learning_rate], 
-                                feed_dict={ model.inputs: xd, model.labels: yd, 
-                                            model.dropout_rate: 1})
+                               feed_dict={ model.inputs: xd, model.labels: yd, 
+                                           model.dropout_rate: 1})
       acc_list.append(acc)
       loss_list.append(loss)
     acc, loss = np.mean(acc_list), np.mean(loss_list)
@@ -59,7 +56,7 @@ def main(unused_argv):
     print("""{0} Step {1:5} Learning rate: {2:.6f} Losss: {3:.4f} Accuracy: {4:.4f}"""
           .format(current, i, lr, loss, acc))
 
-  save_path = saver.save(sess, FLAGS.model_dir)
+  save_path = saver.save(sess, FLAGS.model_dir)  
 
 
 if __name__ == "__main__":
@@ -70,8 +67,6 @@ if __name__ == "__main__":
                       help='Number of epochs to run trainer.')
   parser.add_argument('--learning_rate', type=float, default=1e-3,
                       help='Initial learning rate.')
-  parser.add_argument('--num_classes', type=int, default=2, 
-                      help='the number of classes.')
   parser.add_argument('--embedding_size', type=int, default=300, 
                       help='The size of embedding.')
   parser.add_argument('--rnn_size', type=int, default=300, 
@@ -89,11 +84,11 @@ if __name__ == "__main__":
   parser.add_argument('--decay_rate', type=float, default=0.65, 
                       help='The rate of decay.')
   parser.add_argument('--is_rand', type=bool, default=False,
-                      help='Whether use random words embeddings.')
+                      help='Whether use random words embeddings or static version.')
   parser.add_argument('--is_finetuned', type=bool, default=False, 
                       help='Whether finetune the pertrained word embeddings.')
-  parser.add_argument('--model_dir', type=str, default='models/textrnn',
+  parser.add_argument('--model_dir', type=str, 
+                      default="models/cnn_lstm.ckpt",
                       help='The path to save model.')
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run()
-
