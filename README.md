@@ -20,9 +20,17 @@ In this survey, we select two small-scale text classification datasets.
 
 Before deep learning, we first to compare some of the traditional learning algorithms, and the TFIDF (term-frequency inverse-document-frequency) is used to extract the feature with fixed length from the text. The deep text classification model can be divided into shallow and deep versions, and I will introduce them one by one.
 
-**Shallow models** KimCNN is the basic CNN model used to the task of text classification. For CNN-static, [Word2vec](https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit?usp=sharing) is used as the pre-trained vectors. The paper (Zhang and Wallace 2015) give more detail guide about setting hyperparameters. To address the limitation of conventional window-based neural networks, (Lai et al.) propose a Recurrent Convolutional Neural Network (RCNN), which concatenates Bi-LSTM and directional layers. Here, we compare some of the variants of RNN, including the original version and model with the attention mechanism (Zhou et al.) performs the best among all of the approaches. (Joulin et al.) propose a very simple baseline model for text classification. This algorithm just calculates the mean of word embeddings of the document, and seem the mean vector as the feature map of the document. 
+1. KimCNN is the basic CNN model used to the task of text classification. For CNN-static, [Word2vec](https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit?usp=sharing) is used as the pre-trained vectors. The paper (Zhang and Wallace 2015) give more detail guide about setting hyperparameters. 
 
-**Deep models** Different from word-level models, CharCNN (Zhang et al.) introduce the design of character-level ConvNets for text classification. VDCNN (Conneau et al.) point that the deeper models perform better and able to learn hierarchical representations of the whole sentences. Based on the shallow CNN, DPCNN, proposed by (Johnson and Zhang), is a deeper CNN model. They fixed the number of filters in each convolutional layer, and introduce the identity map. 
+2. To address the limitation of conventional window-based neural networks, (Lai et al.) propose a Recurrent Convolutional Neural Network (RCNN), which concatenates Bi-LSTM and directional layers. Here, we compare some of the variants of RNN, including the original version and model with the attention mechanism (Zhou et al.) performs the best among all of the approaches. 
+
+3. (Joulin et al.) propose a very simple baseline model for text classification. This algorithm just calculates the mean of word embeddings of the document, and seem the mean vector as the feature map of the document. 
+
+4. Different from word-level models, CharCNN (Zhang et al.) introduce the design of character-level ConvNets for text classification. VDCNN (Conneau et al.) point that the deeper models perform better and able to learn hierarchical representations of the whole sentences. Based on the shallow CNN, DPCNN, proposed by (Johnson and Zhang), is a deeper CNN model. They fixed the number of filters in each convolutional layer, and introduce the identity map.
+
+5. In this section, we will try to ensemble or fusion heterogeneous features.
+
+6. Capsule network can preserve the location information of the low features, and also be applied into NLP field (Kim et al.). This section provide a simple implement.
 
 ## References
 
@@ -45,3 +53,5 @@ Relation Classification, [Zhou et al.](http://www.aclweb.org/anthology/P16-2034)
 8. Deep Pyramid Convolutional Neural Networks for Text Categorization, [Johnson and Zhang](https://ai.tencent.com/ailab/media/publications/ACL3-Brady.pdf)
 
 9. A C-LSTM Neural Network for Text Classification, [Zhou et al.](https://arxiv.org/pdf/1511.08630)
+
+10. Text Classiﬁcation using Capsule, [Kim et al.](https://arxiv.org/pdf/1808.03976)
